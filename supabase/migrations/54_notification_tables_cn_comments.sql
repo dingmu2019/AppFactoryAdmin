@@ -1,0 +1,77 @@
+COMMENT ON TABLE public.message_templates IS '统一消息模板表（支持多渠道分发）';
+COMMENT ON COLUMN public.message_templates.id IS '主键';
+COMMENT ON COLUMN public.message_templates.code IS '模板业务编码（如 OTP_LOGIN、ORDER_PAID）';
+COMMENT ON COLUMN public.message_templates.channel IS '渠道（sms/email/whatsapp/feishu/all）';
+COMMENT ON COLUMN public.message_templates.name IS '模板内部名称';
+COMMENT ON COLUMN public.message_templates.title IS '标题/主题（邮件等渠道使用）';
+COMMENT ON COLUMN public.message_templates.content IS '模板内容（支持 {变量} 替换）';
+COMMENT ON COLUMN public.message_templates.variables IS '变量列表（JSON 数组，如 [\"code\",\"app_name\"]）';
+COMMENT ON COLUMN public.message_templates.is_active IS '是否启用';
+COMMENT ON COLUMN public.message_templates.created_at IS '创建时间';
+COMMENT ON COLUMN public.message_templates.updated_at IS '更新时间';
+
+COMMENT ON TABLE public.notification_channels IS '通知通道定义（按渠道类型）';
+COMMENT ON COLUMN public.notification_channels.id IS '主键';
+COMMENT ON COLUMN public.notification_channels.channel_type IS '通道类型（如 email/sms/im/whatsapp）';
+COMMENT ON COLUMN public.notification_channels.name IS '通道名称';
+COMMENT ON COLUMN public.notification_channels.is_enabled IS '是否启用';
+COMMENT ON COLUMN public.notification_channels.created_at IS '创建时间';
+COMMENT ON COLUMN public.notification_channels.updated_at IS '更新时间';
+
+COMMENT ON TABLE public.notification_providers IS '通知服务提供方配置（按通道）';
+COMMENT ON COLUMN public.notification_providers.id IS '主键';
+COMMENT ON COLUMN public.notification_providers.channel_id IS '所属通道ID';
+COMMENT ON COLUMN public.notification_providers.provider_type IS '提供方类型（如 smtp/aliyun/twilio 等）';
+COMMENT ON COLUMN public.notification_providers.name IS '提供方名称/标识（如 default）';
+COMMENT ON COLUMN public.notification_providers.config IS '提供方配置（JSON）';
+COMMENT ON COLUMN public.notification_providers.is_enabled IS '是否启用';
+COMMENT ON COLUMN public.notification_providers.created_at IS '创建时间';
+COMMENT ON COLUMN public.notification_providers.updated_at IS '更新时间';
+
+COMMENT ON TABLE public.notification_routes IS '通知路由（按消息类型选择提供方及优先级）';
+COMMENT ON COLUMN public.notification_routes.id IS '主键';
+COMMENT ON COLUMN public.notification_routes.channel_id IS '所属通道ID';
+COMMENT ON COLUMN public.notification_routes.message_type IS '消息类型（业务标识）';
+COMMENT ON COLUMN public.notification_routes.provider_id IS '主提供方ID';
+COMMENT ON COLUMN public.notification_routes.fallback_provider_id IS '备用提供方ID（可为空）';
+COMMENT ON COLUMN public.notification_routes.priority IS '优先级（数值越小优先级越高）';
+COMMENT ON COLUMN public.notification_routes.is_enabled IS '是否启用';
+COMMENT ON COLUMN public.notification_routes.created_at IS '创建时间';
+COMMENT ON COLUMN public.notification_routes.updated_at IS '更新时间';
+
+COMMENT ON TABLE public.notification_templates IS '通知模板（按通道/消息类型/语言）';
+COMMENT ON COLUMN public.notification_templates.id IS '主键';
+COMMENT ON COLUMN public.notification_templates.channel_id IS '所属通道ID';
+COMMENT ON COLUMN public.notification_templates.message_type IS '消息类型（业务标识）';
+COMMENT ON COLUMN public.notification_templates.language IS '语言（如 zh-CN/en-US）';
+COMMENT ON COLUMN public.notification_templates.subject IS '标题/主题（如邮件主题）';
+COMMENT ON COLUMN public.notification_templates.body IS '模板正文内容';
+COMMENT ON COLUMN public.notification_templates.format IS '内容格式（text/html 等）';
+COMMENT ON COLUMN public.notification_templates.is_enabled IS '是否启用';
+COMMENT ON COLUMN public.notification_templates.created_at IS '创建时间';
+COMMENT ON COLUMN public.notification_templates.updated_at IS '更新时间';
+
+COMMENT ON TABLE public.notification_messages IS '通知消息队列（用于异步发送与重试）';
+COMMENT ON COLUMN public.notification_messages.id IS '主键';
+COMMENT ON COLUMN public.notification_messages.channel_id IS '所属通道ID';
+COMMENT ON COLUMN public.notification_messages.message_type IS '消息类型（业务标识）';
+COMMENT ON COLUMN public.notification_messages.recipient IS '接收方（如邮箱/手机号/IM账号）';
+COMMENT ON COLUMN public.notification_messages.payload IS '消息载荷（JSON，包含变量与上下文）';
+COMMENT ON COLUMN public.notification_messages.status IS '状态（pending/processing/sent/failed 等）';
+COMMENT ON COLUMN public.notification_messages.attempts IS '已尝试次数';
+COMMENT ON COLUMN public.notification_messages.max_attempts IS '最大尝试次数';
+COMMENT ON COLUMN public.notification_messages.locked_at IS '任务锁定时间（处理占用）';
+COMMENT ON COLUMN public.notification_messages.next_retry_at IS '下次重试时间';
+COMMENT ON COLUMN public.notification_messages.last_error IS '最近一次错误信息';
+COMMENT ON COLUMN public.notification_messages.created_at IS '创建时间';
+COMMENT ON COLUMN public.notification_messages.updated_at IS '更新时间';
+
+COMMENT ON TABLE public.notification_logs IS '通知发送日志（发送结果与响应记录）';
+COMMENT ON COLUMN public.notification_logs.id IS '主键';
+COMMENT ON COLUMN public.notification_logs.message_id IS '关联消息ID';
+COMMENT ON COLUMN public.notification_logs.provider_id IS '使用的提供方ID（可为空）';
+COMMENT ON COLUMN public.notification_logs.status IS '发送状态';
+COMMENT ON COLUMN public.notification_logs.latency_ms IS '耗时（毫秒）';
+COMMENT ON COLUMN public.notification_logs.response IS '提供方响应内容（JSON）';
+COMMENT ON COLUMN public.notification_logs.error_message IS '错误信息';
+COMMENT ON COLUMN public.notification_logs.created_at IS '创建时间';

@@ -1,0 +1,5 @@
+{
+  "name": "SaaS Factory Admin",
+  "description": "A centralized management dashboard for the Super Individual SaaS ecosystem. Manages tenants, billing, and AI gateway configurations.",
+  "requestFramePermissions": []
+}

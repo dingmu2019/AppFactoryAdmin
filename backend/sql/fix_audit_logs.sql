@@ -1,0 +1,8 @@
+
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS app_id UUID REFERENCES saas_apps(id);
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'SUCCESS';
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_email VARCHAR(255);
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45);
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_agent TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_app_id ON audit_logs(app_id);

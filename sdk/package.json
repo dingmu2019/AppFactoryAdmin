@@ -1,0 +1,19 @@
+{
+  "name": "@adminsys/sdk",
+  "version": "1.0.0",
+  "description": "Official SDK for AdminSys SaaS Factory",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "crypto-js": "^4.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/crypto-js": "^4.2.0",
+    "@types/node": "^20.0.0"
+  }
+}
