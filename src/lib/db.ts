@@ -92,8 +92,8 @@ export async function getDatabaseDumpConfig(): Promise<DatabaseDumpConfig> {
     }
     if (u) {
       const host = u.hostname;
-      if (host.includes('pooler.supabase.com')) {
-        throw new Error('Backup requires direct Postgres connection. The configured host is a Supabase pooler (pgbouncer). Please configure DIRECT_URL with a non-pooler connection string.');
+      if (host.includes('pooler.supabase.com') && u.port === '6543') {
+        throw new Error('Backup requires direct Postgres connection. The configured host is a Supabase pooler (pgbouncer) in transaction mode (port 6543). Please configure DIRECT_URL with session mode (port 5432) or a non-pooler connection string.');
       }
       return {
         host,
