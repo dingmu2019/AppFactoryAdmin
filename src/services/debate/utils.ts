@@ -1,4 +1,6 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { modelRouter } from '@/services/ai/ModelRouter';
+import { loadLLMConfigsIntoRouter } from '@/services/ai/loadLLMConfigs';
 
 export class DebateUtils {
   static cleanJson(str: string): string {
@@ -78,21 +80,16 @@ export class DebateUtils {
   }
 
   static async callInternalLLM(messages: any[], systemPrompt?: string): Promise<string> {
-    const port = process.env.PORT || 3001;
-    const response = await fetch(`http://localhost:${port}/api/ai/chat`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-admin-secret': process.env.SUPABASE_SERVICE_ROLE_KEY!
-        },
-        body: JSON.stringify({ messages, systemPrompt })
-    });
-
-    if (!response.ok) {
-        const txt = await response.text();
-        throw new Error(`LLM Error: ${txt}`);
+    if (modelRouter.getRegisteredConfigs().length === 0) {
+        await loadLLMConfigsIntoRouter(modelRouter, supabase as any);
     }
-    const data = await response.json() as { content: string };
-    return data.content;
+    
+    const response = await modelRouter.routeRequest({
+        messages,
+        systemPrompt,
+        complexity: 'simple'
+    });
+    
+    return response.content;
   }
 }

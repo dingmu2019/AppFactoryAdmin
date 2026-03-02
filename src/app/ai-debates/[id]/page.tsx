@@ -128,18 +128,25 @@ export default function DebateDetailPage() {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.error || t('common.ai.debatesPage.detail.shareFailed'));
         }
+        
         const data = await res.json();
-        const rawUrl = typeof data?.url === 'string' ? data.url : '';
-        const url = rawUrl.startsWith('http') ? rawUrl : `${window.location.origin}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+        const shareToken = data?.token;
+        if (!shareToken) throw new Error(t('common.ai.debatesPage.detail.shareFailed'));
+        
+        // Use current origin to ensure link works for the user
+        const url = `${window.location.origin}/share/debate/${shareToken}`;
         const topic = typeof data?.topic === 'string' ? data.topic : (debate?.topic || '');
         const copyText = `${t('common.ai.debatesPage.detail.topicLabel')}: ${topic}\n${t('common.ai.debatesPage.detail.publicLinkLabel')}: ${url}`;
-        await navigator.clipboard.writeText(copyText);
+        
+        await handleCopy(copyText);
         toast.success(t('common.ai.debatesPage.detail.shareCopied'));
     } catch (err: any) {
+        console.error('Share failed:', err);
         toast.error(err?.message || t('common.ai.debatesPage.detail.shareFailed'));
     }
   };

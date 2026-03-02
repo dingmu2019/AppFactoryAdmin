@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { AuditLogService } from '@/services/auditService';
 
 function evaluatePasswordPolicy(input: { email?: string; newPassword: string }) {
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { error: updateErr } = await supabase.auth.admin.updateUserById(userId, { password: nextPwd });
+    const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(userId, { password: nextPwd });
     if (updateErr) {
       await AuditLogService.log({
         user_id: userId,
