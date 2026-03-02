@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { User, Copy, Camera, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Copy, Camera, Download, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Tooltip } from "@/components/Tooltip";
@@ -29,6 +29,7 @@ export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
   onExportPDF,
 }) => {
   const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
   const isSystem = msg.agent_name === 'System';
   
   // Try to parse content as JSON (internal_monologue + public_speech)
@@ -59,6 +60,12 @@ export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
       }
   }
 
+  const handleCopy = () => {
+    onCopy(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className={`flex gap-4 ${isSystem ? 'justify-center' : ''}`}>
       {!isSystem && (
@@ -83,8 +90,8 @@ export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
             {!isSystem && (
             <div className="flex items-center gap-1.5 px-2 py-1 opacity-0 group-hover:opacity-100 transition-all duration-300 absolute -bottom-8 left-0 z-10">
               <Tooltip content={t('common.copy')}>
-                <button onClick={() => onCopy(content)} className="p-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
-                  <Copy size={14} />
+                <button onClick={handleCopy} className="p-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
+                  {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                 </button>
               </Tooltip>
               <Tooltip content={t('common.ai.assistant.screenshot')}>

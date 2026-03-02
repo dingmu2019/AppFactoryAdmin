@@ -1,5 +1,5 @@
 
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { swaggerSpec } from '../config/swagger';
 import { logger } from '@/lib/logger';
 import fs from 'fs';

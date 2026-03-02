@@ -25,6 +25,7 @@ export default function DebateDetailPage() {
   const { debate, isLoading, timeLeft, messagesEndRef, messagesContainerRef, handleScroll, fetchDetail } = useDebateDetail(id);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [expandedThinking, setExpandedThinking] = useState<Record<string, boolean>>({});
   const [showThinking, setShowThinking] = useState(false);
   const [viewMode, setViewMode] = useState<'result' | 'timeline'>('timeline');
@@ -120,7 +121,8 @@ export default function DebateDetailPage() {
   };
 
   const handleShare = async () => {
-    if (!id) return;
+    if (!id || isSharing) return;
+    setIsSharing(true);
     try {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
@@ -143,11 +145,13 @@ export default function DebateDetailPage() {
         const topic = typeof data?.topic === 'string' ? data.topic : (debate?.topic || '');
         const copyText = `${t('common.ai.debatesPage.detail.topicLabel')}: ${topic}\n${t('common.ai.debatesPage.detail.publicLinkLabel')}: ${url}`;
         
-        await handleCopy(copyText);
+        await handleCopy(copyText, false); // Pass false to avoid double success toast
         toast.success(t('common.ai.debatesPage.detail.shareCopied'));
     } catch (err: any) {
         console.error('Share failed:', err);
         toast.error(err?.message || t('common.ai.debatesPage.detail.shareFailed'));
+    } finally {
+        setIsSharing(false);
     }
   };
 
@@ -167,12 +171,12 @@ export default function DebateDetailPage() {
     }
   };
 
-  const handleCopy = async (text: string) => {
+  const handleCopy = async (text: string, showToast = true) => {
     if (!text) return;
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
-        toast.success(t('common.copySuccess'));
+        if (showToast) toast.success(t('common.copySuccess'));
       } else {
         // Fallback for non-secure contexts or older browsers
         const textArea = document.createElement('textarea');
@@ -185,16 +189,16 @@ export default function DebateDetailPage() {
         textArea.select();
         try {
           document.execCommand('copy');
-          toast.success(t('common.copySuccess'));
+          if (showToast) toast.success(t('common.copySuccess'));
         } catch (err) {
           console.error('Fallback copy failed', err);
-          toast.error(t('common.copyFailed'));
+          if (showToast) toast.error(t('common.copyFailed'));
         }
         document.body.removeChild(textArea);
       }
     } catch (err) {
       console.error('Copy failed', err);
-      toast.error(t('common.copyFailed'));
+      if (showToast) toast.error(t('common.copyFailed'));
     }
   };
 
@@ -218,7 +222,7 @@ export default function DebateDetailPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-85px)] bg-white dark:bg-zinc-950 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-2xl shadow-indigo-500/5">
-      <DebateHeader debate={debate} onBack={() => router.push('/ai-debates')} onScreenshot={() => handleScreenshot('debate-timeline')} onExportPDF={() => handleExportPDFChat(debate)} onDelete={handleDelete} onStop={handleStop} onShare={handleShare} isDeleting={isDeleting} isStopping={isStopping} />
+      <DebateHeader debate={debate} onBack={() => router.push('/ai-debates')} onScreenshot={() => handleScreenshot('debate-timeline')} onExportPDF={() => handleExportPDFChat(debate)} onDelete={handleDelete} onStop={handleStop} onShare={handleShare} isDeleting={isDeleting} isStopping={isStopping} isSharing={isSharing} />
       
       <div className="flex-1 flex overflow-hidden">
         <div ref={messagesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-8 bg-zinc-50/30 dark:bg-zinc-900/10 no-scrollbar">

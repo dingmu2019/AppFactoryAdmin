@@ -1,13 +1,14 @@
 {
   "name": "next-app",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npx tsx scripts/sync-apis.ts && next build",
     "start": "next start",
     "lint": "eslint",
-    "check-i18n": "node scripts/check-i18n.mjs"
+    "check-i18n": "node scripts/check-i18n.mjs",
+    "sync-apis": "npx tsx scripts/sync-apis.ts"
   },
   "dependencies": {
     "@alicloud/dysmsapi20170525": "^4.5.0",

@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { User, Copy, Save, Trash2, Camera, FileText, Download, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Copy, Save, Trash2, Camera, FileText, Download, ThumbsUp, ThumbsDown, Loader2, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Tooltip } from '../../../../components/Tooltip';
@@ -40,6 +40,13 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   onFeedback,
 }) => {
   const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    onCopy(msg.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   return (
     <div id={`msg-${msg.id}`} className={`flex gap-6 group animate-in fade-in slide-in-from-bottom-4 duration-700 ${msg.role === 'user' ? 'flex-row-reverse' : 'items-start'}`}>
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg transition-transform duration-500 group-hover:scale-110 ${
@@ -112,8 +119,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           {msg.role === 'user' ? (
             <>
               <Tooltip content={t('common.ai.assistant.copy')}>
-                <button onClick={() => onCopy(msg.content)} className="p-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
-                  <Copy size={14} />
+                <button onClick={handleCopy} className="p-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
+                  {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                 </button>
               </Tooltip>
               <Tooltip content={t('common.ai.assistant.saveToPrompts')}>
@@ -130,8 +137,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           ) : (
             <>
               <Tooltip content={t('common.ai.assistant.copy')}>
-                <button onClick={() => onCopy(msg.content)} className="p-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
-                  <Copy size={14} />
+                <button onClick={handleCopy} className="p-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
+                  {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                 </button>
               </Tooltip>
               <Tooltip content={t('common.ai.assistant.delete')}>

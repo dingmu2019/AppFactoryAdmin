@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { FileText, CheckCircle, Copy, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, CheckCircle, Copy, Download, Check } from 'lucide-react';
 import { useI18n } from '@/contexts';
 
 interface SummaryMessageProps {
@@ -182,9 +182,16 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({
   onExport,
 }) => {
   const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
   const rawContent = debate.summary || msg.content.replace('**Summary Report**', '');
   const summaryContent = stripInternalMarkers(String(rawContent || ''));
   const statusText = debate.status; // Simple fallback
+
+  const handleCopy = () => {
+    onCopy(summaryContent);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="flex justify-center my-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -223,8 +230,8 @@ export const SummaryMessage: React.FC<SummaryMessageProps> = ({
           </div>
           
           <div className="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-3">
-            <button onClick={() => onCopy(summaryContent)} className="flex items-center gap-2 px-4 py-2 text-zinc-500 hover:text-indigo-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg transition-colors text-sm font-medium">
-              <Copy size={16} /> {t('common.ai.debatesPage.detail.copySummary')}
+            <button onClick={handleCopy} className="flex items-center gap-2 px-4 py-2 text-zinc-500 hover:text-indigo-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg transition-colors text-sm font-medium">
+              {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />} {t('common.ai.debatesPage.detail.copySummary')}
             </button>
             <button onClick={onExport} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium shadow-lg shadow-indigo-500/20 active:scale-95">
               <Download size={16} /> {t('common.ai.assistant.exportPDF')}

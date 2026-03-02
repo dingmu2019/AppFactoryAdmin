@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Clock, CheckCircle, AlertTriangle, Camera, Download, MoreVertical, StopCircle, Trash2, Share2 } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle, AlertTriangle, Camera, Download, MoreVertical, StopCircle, Trash2, Share2, Loader2 } from 'lucide-react';
 import { Tooltip } from "@/components/Tooltip";
 import { useI18n } from '@/contexts';
 
@@ -14,6 +14,7 @@ interface DebateHeaderProps {
   onShare: () => void;
   isDeleting: boolean;
   isStopping: boolean;
+  isSharing: boolean;
 }
 
 export const DebateHeader: React.FC<DebateHeaderProps> = ({
@@ -26,6 +27,7 @@ export const DebateHeader: React.FC<DebateHeaderProps> = ({
   onShare,
   isDeleting,
   isStopping,
+  isSharing,
 }) => {
   const { t } = useI18n();
   const isRunning = debate.status === 'running';
@@ -48,7 +50,7 @@ export const DebateHeader: React.FC<DebateHeaderProps> = ({
     isRunning
       ? { label: t('common.stop'), onClick: onStop, disabled: isStopping, icon: <StopCircle size={16} /> }
       : isShareable
-        ? { label: t('common.share'), onClick: onShare, disabled: false, icon: <Share2 size={16} /> }
+        ? { label: t('common.share'), onClick: onShare, disabled: isSharing, icon: isSharing ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} /> }
         : null;
 
   return (
