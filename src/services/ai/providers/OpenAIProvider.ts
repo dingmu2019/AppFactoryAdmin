@@ -19,14 +19,21 @@ export class OpenAIProvider implements AIProvider {
   }
 
   async chat(request: AIRequest): Promise<AIResponse> {
-    const messages = [];
+    const messages: any[] = [];
     
+    // System prompt handling
     if (request.systemPrompt) {
       messages.push({ role: 'system', content: request.systemPrompt });
     }
     
-    messages.push(...request.messages);
-
+    // Message mapping
+    for (const msg of request.messages) {
+      messages.push({
+        role: msg.role,
+        content: msg.content
+      });
+    }
+    
     const payload: any = {
       model: this.config.model,
       messages: messages,

@@ -44,12 +44,14 @@ export class GeminiProvider implements AIProvider {
     // For other domains (proxies), we rely on headers, as per user's curl example.
     
     // Convert OpenAI-style messages to Gemini format
-    const contents = request.messages.map(msg => {
+    const contents: any[] = [];
+    
+    for (const msg of request.messages) {
       const parts: any[] = [];
       if (typeof msg.content === 'string') {
         parts.push({ text: msg.content });
       } else if (Array.isArray(msg.content)) {
-        msg.content.forEach(part => {
+        for (const part of msg.content) {
           if (part.type === 'text') {
              parts.push({ text: part.text || '' });
           } else if (part.type === 'image_url') {
@@ -72,13 +74,14 @@ export class GeminiProvider implements AIProvider {
                 parts.push({ text: `[Image: ${url}]` });
              }
           }
-        });
+        }
       }
-      return {
+      
+      contents.push({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts
-      };
-    });
+      });
+    }
 
     if (request.systemPrompt) {
         // Gemini supports system instructions in a separate field in newer API versions

@@ -1,7 +1,13 @@
 
+export interface ContentPart {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: { url: string; detail?: 'auto' | 'low' | 'high' };
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system' | 'tool' | 'function';
-  content: string;
+  content: string | ContentPart[];
   name?: string;
   tool_call_id?: string;
 }
