@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: adminsys-backend
+    restart: always
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./backend/.env
+    environment:
+      - PORT=3001
+
+  frontend:
+    build: ./frontend
+    container_name: adminsys-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

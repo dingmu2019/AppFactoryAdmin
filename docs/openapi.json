@@ -1,0 +1,4653 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "AdminSys SaaS API",
+    "version": "1.0.0",
+    "description": "Standard SaaS Onboarding API for external integrations.",
+    "contact": {
+      "name": "API Support",
+      "email": "support@adminsys.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api/v1",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "https://api.adminsys.com/api/v1",
+      "description": "Production Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-app-key",
+        "description": "Unique identifier for the SaaS application (tenant)."
+      },
+      "Timestamp": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-timestamp",
+        "description": "Current Unix timestamp in seconds. Used for signature verification."
+      },
+      "Nonce": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-nonce",
+        "description": "A random string unique to this request to prevent replay attacks."
+      },
+      "Signature": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-signature",
+        "description": "HMAC-SHA256 hash of (Method + Path + Timestamp + Nonce + Body). Signed with App Secret."
+      }
+    },
+    "schemas": {
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "credits",
+              "subscription",
+              "physical"
+            ]
+          },
+          "price": {
+            "type": "number"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "specs": {
+            "type": "object"
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "order_no": {
+            "type": "string"
+          },
+          "total_amount": {
+            "type": "number"
+          },
+          "pay_amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "paid",
+              "shipped",
+              "completed",
+              "cancelled",
+              "refunded"
+            ]
+          },
+          "pay_status": {
+            "type": "string",
+            "enum": [
+              "unpaid",
+              "paying",
+              "success",
+              "fail"
+            ]
+          },
+          "items_snapshot": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "vip_level": {
+            "type": "string"
+          },
+          "points": {
+            "type": "integer"
+          },
+          "subscription_status": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Unauthorized access",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "example": "AUTH_FAILED"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Invalid signature"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": [],
+      "Timestamp": [],
+      "Nonce": [],
+      "Signature": []
+    }
+  ],
+  "paths": {
+    "/api/v1/ai/models": {
+      "get": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "List available AI models",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of models"
+          }
+        }
+      }
+    },
+    "/api/v1/ai/chat/completions": {
+      "post": {
+        "tags": [
+          "AI"
+        ],
+        "summary": "Chat completion",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "messages"
+                ],
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "max_tokens": {
+                    "type": "integer"
+                  },
+                  "stream": {
+                    "type": "boolean"
+                  },
+                  "tools": {
+                    "type": "array"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI response"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts": {
+      "get": {
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "List system alerts",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "level",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of alerts"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/send-code": {
+      "post": {
+        "summary": "Send verification code to email",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Code sent successfully"
+          },
+          "400": {
+            "description": "Missing email"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Login with verification code",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "code"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "code": {
+                    "type": "string",
+                    "example": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "token": {
+                      "type": "string",
+                      "description": "Scoped App User Token"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "app_id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "expires_in": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "获取当前登录用户信息 (含积分与会员等级)",
+        "description": "返回用户在当前应用上下文中的详细信息，包括可用积分 (`points`) 和会员等级 (`vip_level`)。\n",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "Timestamp": []
+          },
+          {
+            "Nonce": []
+          },
+          {
+            "Signature": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回用户信息",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UserProfile"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/change-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Change password",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "new_password"
+                ],
+                "properties": {
+                  "new_password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed"
+          }
+        }
+      }
+    },
+    "/api/v1/coupons": {
+      "get": {
+        "tags": [
+          "Coupons"
+        ],
+        "summary": "List my coupons",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of coupons"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Coupons"
+        ],
+        "summary": "Create a coupon",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created coupon"
+          }
+        }
+      }
+    },
+    "/api/v1/coupons/{id}": {
+      "delete": {
+        "tags": [
+          "Coupons"
+        ],
+        "summary": "Delete a coupon",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/v1/coupons/verify": {
+      "post": {
+        "tags": [
+          "Coupons"
+        ],
+        "summary": "Verify a coupon",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "amount"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verification result"
+          }
+        }
+      }
+    },
+    "/api/v1/messages/send": {
+      "post": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Send a message",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "channel",
+                  "recipient"
+                ],
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "email",
+                      "sms",
+                      "whatsapp",
+                      "wechat",
+                      "feishu",
+                      "lark"
+                    ]
+                  },
+                  "recipient": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "template_code": {
+                    "type": "string"
+                  },
+                  "data": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message sent"
+          }
+        }
+      }
+    },
+    "/api/v1/orders": {
+      "get": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "List my orders",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of orders"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "创建新订单 (积分充值或订阅)",
+        "description": "为当前登录用户创建订单。支持购买积分、订阅计划或普通商品。\nAI 提示：\n1. `items` 数组中的 `productId` 必须从 `/api/v1/products` 获取。\n2. 积分充值产品 (`type: 'credits'`) 支付成功后会自动增加用户余额。\n3. 订阅产品 (`type: 'subscription'`) 支付成功后会自动更新用户的 VIP 等级。\n",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "Timestamp": []
+          },
+          {
+            "Nonce": []
+          },
+          {
+            "Signature": []
+          },
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "items"
+                ],
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "productId",
+                        "quantity"
+                      ],
+                      "properties": {
+                        "productId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "example": "550e8400-e29b-41d4-a716-446655440000"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "example": 1
+                        }
+                      }
+                    }
+                  },
+                  "shippingInfo": {
+                    "type": "object",
+                    "description": "可选收货信息"
+                  },
+                  "couponCode": {
+                    "type": "string",
+                    "description": "可选优惠券代码"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "订单创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Order"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{id}": {
+      "get": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Get order details",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order details"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Orders"
+        ],
+        "summary": "Cancel an order",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order canceled"
+          }
+        }
+      }
+    },
+    "/api/v1/payments/create": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Create payment",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId",
+                  "amount"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "provider": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment created"
+          }
+        }
+      }
+    },
+    "/api/v1/payments/webhook/{provider}": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Payment webhook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook received"
+          }
+        }
+      }
+    },
+    "/api/v1/refunds": {
+      "post": {
+        "tags": [
+          "Refunds"
+        ],
+        "summary": "Request a refund",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId",
+                  "reason"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "Optional partial refund amount"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Refund request created"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Refunds"
+        ],
+        "summary": "List my refund requests",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of refunds"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/check": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Check auth status",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Auth status"
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/llm": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Get LLM config",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "LLM configuration"
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/email": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Get email config",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Email configuration"
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/database": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Get database config",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Database configuration"
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/email/send": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Send email",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "to",
+                  "subject",
+                  "html"
+                ],
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "html": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email queued"
+          }
+        }
+      }
+    },
+    "/api/v1/integrations/llm/chat": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Chat with LLM",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "message"
+                ],
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Chat response"
+          }
+        }
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "获取当前应用上架的产品列表 (多租户隔离)",
+        "description": "返回当前 SaaS 应用在后台配置并上架的所有产品。\nAI 提示：在创建订单前，应先调用此接口获取 productId 和最新的价格。\n",
+        "security": [
+          {
+            "ApiKeyAuth": []
+          },
+          {
+            "Timestamp": []
+          },
+          {
+            "Nonce": []
+          },
+          {
+            "Signature": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功返回产品列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Product"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/profile": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get user profile in the current app context (balance, subscription)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User profile"
+          }
+        }
+      }
+    },
+    "/api/v1/me/balance": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get user balance and subscription status",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Balance info"
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions/admin/list": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Admin list active subscriptions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of subscriptions"
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Get my active subscription",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active subscription"
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions/cancel": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Cancel subscription",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "List webhooks",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of webhooks"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Create a webhook",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url",
+                  "events"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "events": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Webhook created"
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/{id}": {
+      "delete": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Delete a webhook",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook deleted"
+          }
+        }
+      }
+    },
+    "/api/admin/agents/reorder": {
+      "post": {
+        "tags": [
+          "Admin - Agents"
+        ],
+        "summary": "Reorder AI agents",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/agents": {
+      "get": {
+        "tags": [
+          "Admin - Agents"
+        ],
+        "summary": "List all AI agents",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of agents"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - Agents"
+        ],
+        "summary": "Create a new AI agent",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created agent"
+          }
+        }
+      }
+    },
+    "/api/admin/agents/{id}": {
+      "put": {
+        "tags": [
+          "Admin - Agents"
+        ],
+        "summary": "Update an AI agent",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated agent"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Agents"
+        ],
+        "summary": "Delete an AI agent",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/agents/{id}/status": {
+      "patch": {
+        "tags": [
+          "Admin - Agents"
+        ],
+        "summary": "Toggle agent status",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated"
+          }
+        }
+      }
+    },
+    "/api/admin/agents/{id}/prompts": {
+      "get": {
+        "tags": [
+          "Admin - Agents"
+        ],
+        "summary": "Get agent prompts",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of prompts"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - Agents"
+        ],
+        "summary": "Upsert agent prompts",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated prompts"
+          }
+        }
+      }
+    },
+    "/api/admin/agents/{id}/prompts/{promptId}": {
+      "delete": {
+        "tags": [
+          "Admin - Agents"
+        ],
+        "summary": "Delete an agent prompt",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "promptId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/models": {
+      "get": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "List available AI models",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of models"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/alerts/rule": {
+      "get": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "Get alert rule for app",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "appId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alert rule"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/alerts/rule/{appId}": {
+      "put": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "Update alert rule",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated rule"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/alerts/preview": {
+      "get": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "Preview alert metrics",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "appId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metrics preview"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/alerts/run": {
+      "post": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "Run alert check manually",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "appId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dryRun",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Check result"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/usage/today": {
+      "get": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "Get today's usage",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "appId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usage data"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/usage/trends": {
+      "get": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "Get usage trends",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "appId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Trend data"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/requests": {
+      "get": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "List requests",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "appId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request logs"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/policies": {
+      "get": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "List policies",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "appId",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of policies"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/policies/{appId}": {
+      "put": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "Update policy",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated policy"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/credits/balance": {
+      "get": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "Get credit balance",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "appId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Credit balance"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/credits/ledger": {
+      "get": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "Get credit ledger",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "appId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ledger entries"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/credits/usage/daily": {
+      "get": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "Get daily credit usage",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "appId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daily usage"
+          }
+        }
+      }
+    },
+    "/api/admin/ai-gateway/credits/summary": {
+      "get": {
+        "tags": [
+          "Admin - AI Gateway"
+        ],
+        "summary": "Get credit summary",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "appId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Credit summary"
+          }
+        }
+      }
+    },
+    "/api/admin/apis/sync": {
+      "post": {
+        "tags": [
+          "Admin - API Management"
+        ],
+        "summary": "Manually trigger API Catalog synchronization",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Synchronization result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "count": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/apis": {
+      "get": {
+        "tags": [
+          "Admin - API Management"
+        ],
+        "summary": "List all API definitions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of APIs"
+          }
+        }
+      }
+    },
+    "/api/admin/apis/{id}": {
+      "get": {
+        "tags": [
+          "Admin - API Management"
+        ],
+        "summary": "Get API definition details",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API details"
+          }
+        }
+      }
+    },
+    "/api/admin/apps/config-schema": {
+      "get": {
+        "tags": [
+          "Admin - App Management"
+        ],
+        "summary": "Get application configuration schema",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Config schema"
+          }
+        }
+      }
+    },
+    "/api/admin/apps": {
+      "get": {
+        "tags": [
+          "Admin - App Management"
+        ],
+        "summary": "List all applications",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of apps"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - App Management"
+        ],
+        "summary": "Create a new application",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created app"
+          }
+        }
+      }
+    },
+    "/api/admin/apps/{id}": {
+      "put": {
+        "tags": [
+          "Admin - App Management"
+        ],
+        "summary": "Update an application",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated app"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - App Management"
+        ],
+        "summary": "Delete an application",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/apps/{id}/credentials": {
+      "get": {
+        "tags": [
+          "Admin - App Management"
+        ],
+        "summary": "Get application credentials",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "App credentials"
+          }
+        }
+      }
+    },
+    "/api/admin/apps/{id}/rotate-credentials": {
+      "post": {
+        "tags": [
+          "Admin - App Management"
+        ],
+        "summary": "Rotate application credentials",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "New credentials"
+          }
+        }
+      }
+    },
+    "/api/admin/coupons": {
+      "get": {
+        "tags": [
+          "Admin - Coupons"
+        ],
+        "summary": "List coupons",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "app_id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of coupons"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - Coupons"
+        ],
+        "summary": "Create a coupon",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "app_id",
+                  "code",
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "app_id": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created coupon"
+          }
+        }
+      }
+    },
+    "/api/admin/coupons/{id}": {
+      "delete": {
+        "tags": [
+          "Admin - Coupons"
+        ],
+        "summary": "Delete a coupon",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coupon deleted"
+          }
+        }
+      }
+    },
+    "/api/admin/dashboard/overview": {
+      "get": {
+        "tags": [
+          "Admin - Dashboard"
+        ],
+        "summary": "Get dashboard overview",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard data"
+          }
+        }
+      }
+    },
+    "/api/admin/integrations": {
+      "get": {
+        "tags": [
+          "Admin - Integrations"
+        ],
+        "summary": "Get all integration configurations",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of integration configs"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - Integrations"
+        ],
+        "summary": "Save or update an integration configuration",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved configuration"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Integrations"
+        ],
+        "summary": "Delete an integration configuration",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/integrations/email/test": {
+      "post": {
+        "tags": [
+          "Admin - Integrations"
+        ],
+        "summary": "Test email sending",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test result"
+          }
+        }
+      }
+    },
+    "/api/admin/integrations/llm/test": {
+      "post": {
+        "tags": [
+          "Admin - Integrations"
+        ],
+        "summary": "Test LLM connection",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test result"
+          }
+        }
+      }
+    },
+    "/api/admin/notifications": {
+      "get": {
+        "tags": [
+          "Admin - Notifications"
+        ],
+        "summary": "Get notification overview",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification stats"
+          }
+        }
+      }
+    },
+    "/api/admin/notifications/channels/{channelType}": {
+      "post": {
+        "tags": [
+          "Admin - Notifications"
+        ],
+        "summary": "Upsert notification channel",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channelType",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated channel"
+          }
+        }
+      }
+    },
+    "/api/admin/notifications/test": {
+      "post": {
+        "tags": [
+          "Admin - Notifications"
+        ],
+        "summary": "Test notification sending",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test result"
+          }
+        }
+      }
+    },
+    "/api/admin/orders/stats": {
+      "get": {
+        "tags": [
+          "Admin - Orders"
+        ],
+        "summary": "Get order statistics",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order stats"
+          }
+        }
+      }
+    },
+    "/api/admin/orders": {
+      "get": {
+        "tags": [
+          "Admin - Orders"
+        ],
+        "summary": "List orders",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of orders"
+          }
+        }
+      }
+    },
+    "/api/admin/orders/{orderId}/refunds": {
+      "get": {
+        "tags": [
+          "Admin - Orders"
+        ],
+        "summary": "Get refunds for an order",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of refunds"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - Orders"
+        ],
+        "summary": "Create a refund",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created refund"
+          }
+        }
+      }
+    },
+    "/api/admin/product-categories": {
+      "get": {
+        "tags": [
+          "Admin - Product Categories"
+        ],
+        "summary": "List product categories",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of categories"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - Product Categories"
+        ],
+        "summary": "Create a category",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created category"
+          }
+        }
+      }
+    },
+    "/api/admin/product-categories/{id}": {
+      "put": {
+        "tags": [
+          "Admin - Product Categories"
+        ],
+        "summary": "Update a category",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated category"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Product Categories"
+        ],
+        "summary": "Delete a category",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/products": {
+      "get": {
+        "tags": [
+          "Admin - Products"
+        ],
+        "summary": "List products",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of products"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - Products"
+        ],
+        "summary": "Create a product",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created product"
+          }
+        }
+      }
+    },
+    "/api/admin/products/{id}": {
+      "put": {
+        "tags": [
+          "Admin - Products"
+        ],
+        "summary": "Update a product",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated product"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - Products"
+        ],
+        "summary": "Delete a product",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/rbac/roles": {
+      "get": {
+        "tags": [
+          "Admin - RBAC"
+        ],
+        "summary": "List roles",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of roles"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - RBAC"
+        ],
+        "summary": "Create a new role",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created role"
+          }
+        }
+      }
+    },
+    "/api/admin/rbac/roles/{id}": {
+      "delete": {
+        "tags": [
+          "Admin - RBAC"
+        ],
+        "summary": "Delete a role",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/rbac/permissions": {
+      "get": {
+        "tags": [
+          "Admin - RBAC"
+        ],
+        "summary": "List permissions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of permissions"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - RBAC"
+        ],
+        "summary": "Create a permission",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created permission"
+          }
+        }
+      }
+    },
+    "/api/admin/rbac/policies": {
+      "get": {
+        "tags": [
+          "Admin - RBAC"
+        ],
+        "summary": "List policies",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of policies"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin - RBAC"
+        ],
+        "summary": "Create a policy",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created policy"
+          }
+        }
+      }
+    },
+    "/api/admin/rbac/users/assign": {
+      "post": {
+        "tags": [
+          "Admin - RBAC"
+        ],
+        "summary": "Assign role to user",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/rbac/users/remove": {
+      "post": {
+        "tags": [
+          "Admin - RBAC"
+        ],
+        "summary": "Remove role from user",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/refunds": {
+      "get": {
+        "tags": [
+          "Admin - Refunds"
+        ],
+        "summary": "List refunds",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of refunds"
+          }
+        }
+      }
+    },
+    "/api/admin/refunds/stats": {
+      "get": {
+        "tags": [
+          "Admin - Refunds"
+        ],
+        "summary": "Get refund statistics",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Refund stats"
+          }
+        }
+      }
+    },
+    "/api/admin/skills": {
+      "get": {
+        "tags": [
+          "Admin - Skills"
+        ],
+        "summary": "List AI skills",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of skills"
+          }
+        }
+      }
+    },
+    "/api/admin/skills/upload": {
+      "post": {
+        "tags": [
+          "Admin - Skills"
+        ],
+        "summary": "Upload a new skill (ZIP)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill uploaded"
+          }
+        }
+      }
+    },
+    "/api/admin/skills/{id}/status": {
+      "patch": {
+        "tags": [
+          "Admin - Skills"
+        ],
+        "summary": "Toggle skill status",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated"
+          }
+        }
+      }
+    },
+    "/api/admin/skills/{id}": {
+      "delete": {
+        "tags": [
+          "Admin - Skills"
+        ],
+        "summary": "Delete a skill",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/subscriptions": {
+      "get": {
+        "tags": [
+          "Admin - Subscriptions"
+        ],
+        "summary": "List all subscriptions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "appId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of subscriptions"
+          }
+        }
+      }
+    },
+    "/api/admin/system-logs": {
+      "get": {
+        "tags": [
+          "Admin - System Logs"
+        ],
+        "summary": "List system logs",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of logs"
+          }
+        }
+      }
+    },
+    "/api/admin/system-logs/stats": {
+      "get": {
+        "tags": [
+          "Admin - System Logs"
+        ],
+        "summary": "Get log statistics",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Log stats"
+          }
+        }
+      }
+    },
+    "/api/admin/system-logs/{id}/resolve": {
+      "patch": {
+        "tags": [
+          "Admin - System Logs"
+        ],
+        "summary": "Mark log as resolved",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Log resolved"
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": [
+          "Admin - User Management"
+        ],
+        "summary": "List all users",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of users"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}": {
+      "put": {
+        "tags": [
+          "Admin - User Management"
+        ],
+        "summary": "Update a user",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin - User Management"
+        ],
+        "summary": "Delete a user",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/ai/chat/optimize": {
+      "post": {
+        "tags": [
+          "AI Chat"
+        ],
+        "summary": "Optimize prompt",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Optimized content"
+          }
+        }
+      }
+    },
+    "/api/ai/chat": {
+      "post": {
+        "tags": [
+          "AI Chat"
+        ],
+        "summary": "Chat with AI agent",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "messages"
+                ],
+                "properties": {
+                  "messages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "agentId": {
+                    "type": "string"
+                  },
+                  "systemPrompt": {
+                    "type": "string"
+                  },
+                  "complexity": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI response"
+          }
+        }
+      }
+    },
+    "/api/ai/chat/skills": {
+      "get": {
+        "tags": [
+          "AI Chat"
+        ],
+        "summary": "List available skills",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of skills"
+          }
+        }
+      }
+    },
+    "/api/ai/chat/history": {
+      "delete": {
+        "tags": [
+          "AI Chat"
+        ],
+        "summary": "Clear chat history",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "agentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "History cleared"
+          }
+        }
+      }
+    },
+    "/api/ai/debates": {
+      "get": {
+        "tags": [
+          "AI Debates"
+        ],
+        "summary": "List debates",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of debates"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "AI Debates"
+        ],
+        "summary": "Create a debate",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "topic"
+                ],
+                "properties": {
+                  "topic": {
+                    "type": "string"
+                  },
+                  "rounds": {
+                    "type": "integer"
+                  },
+                  "participants": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created debate"
+          }
+        }
+      }
+    },
+    "/api/ai/debates/{id}": {
+      "get": {
+        "tags": [
+          "AI Debates"
+        ],
+        "summary": "Get debate details",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Debate details"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AI Debates"
+        ],
+        "summary": "Delete a debate",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Debate deleted"
+          }
+        }
+      }
+    },
+    "/api/ai/debates/{id}/stop": {
+      "post": {
+        "tags": [
+          "AI Debates"
+        ],
+        "summary": "Stop a debate",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Debate stopped"
+          }
+        }
+      }
+    },
+    "/api/ai/debates/{id}/share": {
+      "post": {
+        "tags": [
+          "AI Debates"
+        ],
+        "summary": "Generate a public share link for a completed debate",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Share token generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/lab/sessions": {
+      "post": {
+        "tags": [
+          "AI Lab"
+        ],
+        "summary": "Create a new lab session",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "mode"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "entropy": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created session"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "AI Lab"
+        ],
+        "summary": "List sessions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of sessions"
+          }
+        }
+      }
+    },
+    "/api/ai/lab/sessions/{id}": {
+      "get": {
+        "tags": [
+          "AI Lab"
+        ],
+        "summary": "Get session details",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session details"
+          }
+        }
+      }
+    },
+    "/api/auth/send-code": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Send verification code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Code sent"
+          }
+        }
+      }
+    },
+    "/api/auth/login-with-code": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Login with code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "code"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login success"
+          }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Change password",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "new_password"
+                ],
+                "properties": {
+                  "current_password": {
+                    "type": "string"
+                  },
+                  "new_password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logged out"
+          }
+        }
+      }
+    },
+    "/api/cron/health": {
+      "get": {
+        "tags": [
+          "Cron"
+        ],
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/cron/daily-report": {
+      "get": {
+        "tags": [
+          "Cron"
+        ],
+        "summary": "Trigger daily report",
+        "responses": {
+          "200": {
+            "description": "Report triggered"
+          }
+        }
+      }
+    },
+    "/api/cron/notifications": {
+      "get": {
+        "tags": [
+          "Cron"
+        ],
+        "summary": "Process notifications",
+        "responses": {
+          "200": {
+            "description": "Notifications processed"
+          }
+        }
+      }
+    },
+    "/api/cron/orders/auto-cancel": {
+      "get": {
+        "tags": [
+          "Cron"
+        ],
+        "summary": "Auto cancel unpaid orders",
+        "responses": {
+          "200": {
+            "description": "Orders cancelled"
+          }
+        }
+      }
+    },
+    "/api/cron/webhooks": {
+      "get": {
+        "tags": [
+          "Cron"
+        ],
+        "summary": "Process webhooks",
+        "responses": {
+          "200": {
+            "description": "Webhooks processed"
+          }
+        }
+      }
+    },
+    "/api/cron/ai-gateway/alerts": {
+      "get": {
+        "tags": [
+          "Cron"
+        ],
+        "summary": "Check AI Gateway alerts",
+        "responses": {
+          "200": {
+            "description": "Alerts checked"
+          }
+        }
+      }
+    },
+    "/api/cron/run": {
+      "get": {
+        "tags": [
+          "Cron"
+        ],
+        "summary": "Run all cron jobs",
+        "responses": {
+          "200": {
+            "description": "All jobs executed"
+          }
+        }
+      }
+    },
+    "/api/database/data": {
+      "get": {
+        "tags": [
+          "Database"
+        ],
+        "summary": "Get table data",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Table data"
+          }
+        }
+      }
+    },
+    "/api/database/export": {
+      "get": {
+        "tags": [
+          "Database"
+        ],
+        "summary": "Export database SQL",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "mode",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "schema",
+                "bootstrap"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeData",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "includeRls",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "seedTables",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SQL dump"
+          }
+        }
+      }
+    },
+    "/api/database/procedures": {
+      "get": {
+        "tags": [
+          "Database"
+        ],
+        "summary": "List all stored procedures",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of procedures"
+          }
+        }
+      }
+    },
+    "/api/database/procedures/definition": {
+      "get": {
+        "tags": [
+          "Database"
+        ],
+        "summary": "Get procedure definition",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Procedure definition"
+          }
+        }
+      }
+    },
+    "/api/database/schema": {
+      "get": {
+        "tags": [
+          "Database"
+        ],
+        "summary": "Get table schema",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Table schema details"
+          }
+        }
+      }
+    },
+    "/api/database/tables": {
+      "get": {
+        "tags": [
+          "Database"
+        ],
+        "summary": "List all tables",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tables"
+          }
+        }
+      }
+    },
+    "/api/debug/test-error": {
+      "get": {
+        "tags": [
+          "Debug"
+        ],
+        "summary": "Trigger test error",
+        "responses": {
+          "500": {
+            "description": "Error triggered"
+          }
+        }
+      }
+    },
+    "/api/debug/test-async-error": {
+      "get": {
+        "tags": [
+          "Debug"
+        ],
+        "summary": "Trigger async test error",
+        "responses": {
+          "500": {
+            "description": "Error triggered"
+          }
+        }
+      }
+    },
+    "/api/ip": {
+      "get": {
+        "tags": [
+          "Utility"
+        ],
+        "summary": "Get client IP",
+        "responses": {
+          "200": {
+            "description": "IP address"
+          }
+        }
+      }
+    },
+    "/api/oauth/authorize": {
+      "get": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "OAuth2 Authorization Endpoint",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "response_type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "client_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "redirect_uri",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorization page or redirect"
+          }
+        }
+      }
+    },
+    "/api/oauth/token": {
+      "post": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "OAuth2 Token Endpoint",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "grant_type",
+                  "code",
+                  "client_id"
+                ],
+                "properties": {
+                  "grant_type": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "client_id": {
+                    "type": "string"
+                  },
+                  "client_secret": {
+                    "type": "string"
+                  },
+                  "redirect_uri": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Access token"
+          }
+        }
+      }
+    },
+    "/api/oauth/userinfo": {
+      "get": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "OAuth2 UserInfo Endpoint",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User information"
+          }
+        }
+      }
+    },
+    "/api/public/debates/{token}": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Get public debate details by share token",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Debate details"
+          },
+          "404": {
+            "description": "Not found or invalid token"
+          }
+        }
+      }
+    },
+    "/api/public/openapi.json": {
+      "get": {
+        "tags": [
+          "Public Docs"
+        ],
+        "summary": "Get OpenAPI Spec",
+        "responses": {
+          "200": {
+            "description": "OpenAPI JSON"
+          }
+        }
+      }
+    },
+    "/api/public/apis": {
+      "get": {
+        "tags": [
+          "Public Docs"
+        ],
+        "summary": "List public APIs",
+        "responses": {
+          "200": {
+            "description": "List of APIs"
+          }
+        }
+      }
+    },
+    "/api/public/docs": {
+      "get": {
+        "tags": [
+          "Public Docs"
+        ],
+        "summary": "API Documentation UI",
+        "responses": {
+          "200": {
+            "description": "HTML page"
+          }
+        }
+      }
+    }
+  },
+  "tags": []
+}

@@ -1,9 +1,23 @@
+AdminSys-001 his
+sdk
+AdminSys-001-his
+AdminSys-001_his
+scripts
+reports
+docs
+supabase
+uploads
+.trae
+*.pem
+*.key
+.env*
+! .env.example
+node_modules
 .next
 .vercel
-backend/uploads
-backend/uploads/**
-frontend/node_modules
-backend/node_modules
-node_modules
 **/*.log
 **/*.local
+backend/scripts
+Admin-Sys
+ai_town
+moltbook
