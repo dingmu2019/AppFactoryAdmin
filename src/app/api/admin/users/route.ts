@@ -35,7 +35,12 @@ export const GET = withApiErrorHandling(async (req: NextRequest) => {
 
     let query = supabase
       .from('users')
-      .select('*', { count: 'exact' });
+      .select(`
+        *,
+        rbac_roles:admin_user_roles(
+          role:admin_roles(code, name)
+        )
+      `, { count: 'exact' });
 
     if (search) {
       query = query.or(`email.ilike.%${search}%,full_name.ilike.%${search}%`);

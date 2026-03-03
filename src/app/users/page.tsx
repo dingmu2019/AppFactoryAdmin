@@ -158,6 +158,8 @@ const UsersPage: React.FC = () => {
         fetchUsers();
     } catch (err: any) {
         console.error('Update user failed:', err);
+        // 给用户一个错误反馈，而不是仅仅在控制台打印
+        setError({ error: err.message || 'Failed to update user' });
     } finally {
         setSaving(false);
     }

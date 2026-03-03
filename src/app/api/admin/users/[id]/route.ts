@@ -9,14 +9,58 @@ export const PUT = withApiErrorHandling(async (req: NextRequest, { params }: { p
     const { full_name, roles, status } = body;
 
     const supabase = getSupabaseForRequest(req);
+    
+    // 1. 更新 public.users 表 (基础角色数组)
+    // 映射 RBAC role code 到基础 user_role 枚举，避免数据库报错
+    const enumRoles = (roles || []).map((r: string) => {
+        const lower = r.toLowerCase();
+        if (lower.includes('admin')) return 'admin';
+        if (lower.includes('editor')) return 'editor';
+        if (lower.includes('viewer')) return 'viewer';
+        return 'user';
+    });
+
     const { data, error } = await supabase
       .from('users')
-      .update({ full_name, roles, status })
+      .update({ 
+          full_name, 
+          roles: Array.from(new Set(enumRoles)), // 去重
+          status 
+      })
       .eq('id', id)
       .select()
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // 2. 同步更新 RBAC 系统 (admin_user_roles 表)
+    if (roles && Array.isArray(roles)) {
+        // 先删除该用户现有的所有角色关联 (简单起见，实际生产中可能需要更精细的操作)
+        await supabase
+            .from('admin_user_roles')
+            .delete()
+            .eq('user_id', id);
+
+        // 查找对应的 admin_roles 并插入关联
+        // 注意：这里假设 roles 数组里的 code 对应 admin_roles 表里的 code
+        const { data: adminRoles } = await supabase
+            .from('admin_roles')
+            .select('id, code')
+            .in('code', roles); // 直接使用前端传来的 code (通常是小写)
+
+        if (adminRoles && adminRoles.length > 0) {
+            const roleAssignments = adminRoles.map(role => ({
+                user_id: id,
+                role_id: role.id,
+                // 默认分配为全局权限 (app_id 为 NULL)
+                app_id: null 
+            }));
+
+            await supabase
+                .from('admin_user_roles')
+                .insert(roleAssignments);
+        }
+    }
 
     return NextResponse.json(data);
 });
