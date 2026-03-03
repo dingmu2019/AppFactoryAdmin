@@ -95,9 +95,9 @@ export default function ProductListPage() {
       const catData = await catRes.json();
       const appData = await appRes.json();
       
-      setProducts(Array.isArray(prodData) ? prodData : []);
+      setProducts(Array.isArray(prodData) ? prodData : (Array.isArray(prodData?.data) ? prodData.data : []));
       setCategories(Array.isArray(catData) ? catData : (Array.isArray(catData?.data) ? catData.data : []));
-      setApps(Array.isArray(appData) ? appData : []);
+      setApps(Array.isArray(appData) ? appData : (Array.isArray(appData?.data) ? appData.data : []));
     } catch (error) {
       showToast((error as any)?.message || t('common.loadFailed'), 'error');
     } finally {
@@ -325,13 +325,13 @@ export default function ProductListPage() {
                 <tr key={prod.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                   <td className="px-6 py-4 font-medium text-zinc-900 dark:text-white">{getProductName(prod.name)}</td>
                   <td className="px-6 py-4 text-zinc-600 dark:text-zinc-300">
-                      {prod.app ? prod.app.name : (prod.app_id ? <span className="font-mono text-xs text-zinc-400">{prod.app_id.slice(0,8)}</span> : '-')}
+                      {prod.app?.name || prod.saas_apps?.name || (prod.app_id ? <span className="font-mono text-xs text-zinc-400">{prod.app_id.slice(0,8)}</span> : '-')}
                   </td>
                   <td className="px-6 py-4 font-mono text-zinc-500">{prod.sku}</td>
                   <td className="px-6 py-4">
-                      {prod.category ? (
+                      {(prod.category || prod.product_categories) ? (
                           <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs text-zinc-600 dark:text-zinc-400">
-                              {prod.category.name}
+                              {(prod.category || prod.product_categories).name}
                           </span>
                       ) : '-'}
                   </td>

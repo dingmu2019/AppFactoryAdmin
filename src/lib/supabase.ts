@@ -27,11 +27,15 @@ export const getSupabaseAdmin = () => {
   const desiredMode: 'service' | 'anon' = serviceKey ? 'service' : 'anon';
   const desiredKeySig = serviceKey ? serviceKey.slice(0, 12) : supabaseAnonKey.slice(0, 12);
 
+  // 如果已有实例且 Key 没变，直接返回
   if (adminClient && adminClientMode === desiredMode && adminClientKeySig === desiredKeySig) return adminClient;
+  
+  // 如果 Key 变化了或第一次加载，重新初始化
+  console.log(`[Supabase] Initializing admin client with mode: ${desiredMode}`);
   
   if (!serviceKey) {
     if (process.env.NODE_ENV === 'production') {
-      console.error('[Supabase] CRITICAL: SUPABASE_SERVICE_ROLE_KEY is missing in production! Admin operations may fail due to RLS.');
+      console.warn('[Supabase] WARNING: SUPABASE_SERVICE_ROLE_KEY is missing in production! Falling back to Anon Key.');
     }
     adminClient = createClient(
       supabaseUrl || 'https://placeholder.supabase.co',
@@ -76,7 +80,12 @@ export const getSupabaseForRequest = (req: Request) => {
   );
 };
 
-// 导出别名以保持向后兼容，但建议后续使用 getSupabaseAdmin()
-// 注意：此导出在模块加载时会执行一次初始化，如果此时环境变量未就绪，
-// 后续调用 getSupabaseAdmin() 会重新尝试（如果是第一次调用的话）
-export const supabaseAdmin = getSupabaseAdmin();
+// 导出代理对象以保持向后兼容，确保每次访问都获取最新的 adminClient
+export const supabaseAdmin = new Proxy({}, {
+  get: (target, prop) => {
+    const client = getSupabaseAdmin();
+    const value = (client as any)[prop];
+    // 如果是函数（如 .from, .auth 等），必须绑定 client 实例
+    return typeof value === 'function' ? value.bind(client) : value;
+  }
+}) as any;
