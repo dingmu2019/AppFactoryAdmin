@@ -38,9 +38,13 @@ export async function middleware(req: NextRequest) {
   );
   
   // 获取当前会话信息
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch (e) {
+    console.error('[Middleware] Supabase getUser error:', e);
+  }
 
   const path = req.nextUrl.pathname;
 
@@ -57,15 +61,20 @@ export async function middleware(req: NextRequest) {
       if (authHeader?.startsWith('Bearer ')) {
         const token = authHeader.split(' ')[1];
         // 尝试使用 Bearer Token 获取用户
-        const { data: { user: bearerUser } } = await supabase.auth.getUser(token);
-        if (!bearerUser) {
-          return NextResponse.json(
-            { error: 'Unauthorized: Invalid or expired token' },
-            { status: 401 }
-          );
+        try {
+          const { data: { user: bearerUser } } = await supabase.auth.getUser(token);
+          if (bearerUser) {
+            // 如果 Bearer Token 校验成功，允许通过
+            return res;
+          }
+        } catch (e) {
+          console.error('[Middleware] Bearer token validation error:', e);
         }
-        // 如果 Bearer Token 校验成功，允许通过
-        return res;
+        
+        return NextResponse.json(
+          { error: 'Unauthorized: Invalid or expired token' },
+          { status: 401 }
+        );
       }
 
       // 如果既没有 Cookie 也没有有效的 Bearer Token

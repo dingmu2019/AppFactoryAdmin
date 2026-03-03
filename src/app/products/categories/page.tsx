@@ -140,7 +140,9 @@ export default function ProductCategoriesPage() {
             <Loader2 className="animate-spin text-indigo-500" size={24} />
           </div>
         ) : error ? (
-          <div className="p-8 text-center text-red-500">{error}</div>
+          <div className="p-8 text-center text-rose-500 font-medium">
+            {typeof error === 'string' ? error : (error.error || error.message || t('common.loadFailed'))}
+          </div>
         ) : categories.length === 0 ? (
           <div className="p-8 text-center text-zinc-500">{t('common.productCategories.empty')}</div>
         ) : (
