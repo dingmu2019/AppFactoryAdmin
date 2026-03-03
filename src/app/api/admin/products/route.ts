@@ -1,34 +1,34 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseForRequest } from '@/lib/supabase';
-import { withApiErrorHandling } from '@/lib/api-wrapper';
 import { SystemLogger } from '@/lib/logger';
 
-export const GET = withApiErrorHandling(async (req: NextRequest) => {
-  const { searchParams } = new URL(req.url);
-  const category_id = searchParams.get('category_id');
-  const status = searchParams.get('status');
-  const app_id = searchParams.get('app_id');
-  
-  // 诊断环境变量信息（非敏感）
-  const envDiagnostics = {
-    hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    nodeEnv: process.env.NODE_ENV,
-    vercelEnv: process.env.VERCEL_ENV || 'local',
-  };
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const category_id = searchParams.get('category_id');
+    const status = searchParams.get('status');
+    const app_id = searchParams.get('app_id');
+    
+    // 诊断环境变量信息（非敏感）
+    const envDiagnostics = {
+      hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV || 'local',
+    };
 
-  const supabase = getSupabaseForRequest(req);
+    const supabase = getSupabaseForRequest(req);
 
-  let query = supabase
-      .from('products')
-      .select(`
-        *,
-        category:product_categories(id, name, code),
-        app:saas_apps(id, name)
-      `)
-      .order('created_at', { ascending: false });
+    let query = supabase
+        .from('products')
+        .select(`
+          *,
+          category:product_categories(id, name, code),
+          app:saas_apps(id, name)
+        `)
+        .order('created_at', { ascending: false });
 
     if (category_id) query = query.eq('category_id', category_id);
     if (status) query = query.eq('status', status);
@@ -37,19 +37,16 @@ export const GET = withApiErrorHandling(async (req: NextRequest) => {
     const { data, error } = await query;
 
     if (error) {
-        // 记录详细错误日志到数据库
-        await SystemLogger.logError({
+        // 记录详细错误日志 (异步)
+        SystemLogger.logError({
             level: 'ERROR',
             message: `[Products API] Fetch failed: ${error.message}`,
             stack_trace: error.details || error.hint,
             path: '/api/admin/products',
             method: 'GET',
-            context: {
-                error,
-                envDiagnostics,
-                query: Object.fromEntries(searchParams)
-            }
+            context: { error, envDiagnostics }
         });
+        
         return NextResponse.json({ 
             error: error.message,
             details: error.details,
@@ -58,22 +55,16 @@ export const GET = withApiErrorHandling(async (req: NextRequest) => {
         }, { status: 500 });
     }
     return NextResponse.json(data);
-});
-
-export const POST = withApiErrorHandling(async (req: NextRequest) => {
-    const body = await req.json();
-    const { sku, name, type, price, category_id, description, status, images, stock, app_id } = body;
-    
-    const supabase = getSupabaseForRequest(req);
-
-    const { data, error } = await supabase
-      .from('products')
-      .insert([{
-        sku, name, type, price, category_id, description, status, images, stock, app_id
-      }])
-      .select()
-      .single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json(data, { status: 201 });
-});
+  } catch (error: any) {
+    console.error('[Products API] Fatal Error:', error);
+    return NextResponse.json({ 
+      error: 'Internal Server Error',
+      message: error.message,
+      diagnostics: {
+        hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+        hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      }
+    }, { status: 500 });
+  }
+}

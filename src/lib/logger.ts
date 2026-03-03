@@ -1,18 +1,4 @@
-import pino from 'pino';
 import { getSupabaseAdmin } from './supabase';
-
-// Create Pino Logger
-export const logger = pino({
-  level: process.env.LOG_LEVEL || 'info',
-  base: {
-    env: process.env.NODE_ENV,
-  },
-  serializers: {
-    err: pino.stdSerializers.err,
-    req: pino.stdSerializers.req,
-    res: pino.stdSerializers.res
-  },
-});
 
 export interface LogEntry {
   level: 'ERROR' | 'WARN' | 'FATAL' | 'INFO';
@@ -26,25 +12,37 @@ export interface LogEntry {
   method?: string;
 }
 
+/**
+ * Simplified Logger to avoid dependencies like 'pino' which might cause issues in Serverless/Edge environments.
+ */
+export const logger = {
+  info: (msg: any, ...args: any[]) => console.log(`[INFO]`, msg, ...args),
+  warn: (msg: any, ...args: any[]) => console.warn(`[WARN]`, msg, ...args),
+  error: (msg: any, ...args: any[]) => console.error(`[ERROR]`, msg, ...args),
+  fatal: (msg: any, ...args: any[]) => console.error(`[FATAL]`, msg, ...args),
+};
+
 export const SystemLogger = {
   async logError(entry: LogEntry) {
-    // 1. Structured Log to Stdout
-    const logFn = entry.level === 'ERROR' ? logger.error.bind(logger) :
-                  entry.level === 'WARN' ? logger.warn.bind(logger) :
-                  entry.level === 'FATAL' ? logger.fatal.bind(logger) :
-                  logger.info.bind(logger);
+    // 1. Log to Console (Stdout)
+    const logFn = entry.level === 'ERROR' ? console.error :
+                  entry.level === 'WARN' ? console.warn :
+                  entry.level === 'FATAL' ? console.error :
+                  console.log;
     
-    logFn({ 
-      ...entry,
-      err: entry.stack_trace ? { stack: entry.stack_trace } : undefined
-    }, entry.message);
+    logFn(`[SystemLogger] ${entry.level}: ${entry.message}`, {
+      path: entry.path,
+      method: entry.method,
+      stack: entry.stack_trace,
+      context: entry.context
+    });
 
-    // 2. Persist to DB
+    // 2. Persist to DB (Asynchronously)
     try {
       const supabase = getSupabaseAdmin();
       
-      // Log to 'system_error_logs'
-      const { error } = await supabase.from('system_error_logs').insert([{
+      // We don't await here to avoid blocking the main request
+      supabase.from('system_error_logs').insert([{
         level: entry.level,
         message: entry.message.substring(0, 1000),
         stack_trace: entry.stack_trace,
@@ -55,13 +53,12 @@ export const SystemLogger = {
         path: entry.path,
         method: entry.method,
         resolved: false
-      }]);
+      }]).then(({ error }) => {
+        if (error) console.error('[SystemLogger] Failed to write to DB:', error);
+      }).catch(err => console.error('[SystemLogger] Uncaught DB error:', err));
       
-      if (error) {
-        logger.error({ err: error }, 'SystemLogger: Failed to insert log to system_error_logs');
-      }
     } catch (err) {
-      logger.error({ err }, 'SystemLogger: Unexpected error writing to DB');
+      console.error('[SystemLogger] Unexpected error:', err);
     }
   }
 };

@@ -2,10 +2,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseForRequest } from '@/lib/supabase';
 import { SystemLogger } from '@/lib/logger';
-import { withApiErrorHandling } from '@/lib/api-wrapper';
 
 // GET /api/admin/product-categories
-export const GET = withApiErrorHandling(async (req: NextRequest) => {
+export async function GET(req: NextRequest) {
+  try {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '20');
@@ -43,19 +43,16 @@ export const GET = withApiErrorHandling(async (req: NextRequest) => {
       .range(from, to);
 
     if (error) {
-       // 记录详细错误日志到数据库
-       await SystemLogger.logError({
+       // 记录详细错误日志 (异步)
+       SystemLogger.logError({
            level: 'ERROR',
            message: `[Product Categories API] Fetch failed: ${error.message}`,
            stack_trace: error.details || error.hint,
            path: '/api/admin/product-categories',
            method: 'GET',
-           context: {
-               error,
-               envDiagnostics,
-               query: Object.fromEntries(searchParams)
-           }
+           context: { error, envDiagnostics }
        });
+       
        return NextResponse.json({ 
            error: error.message,
            details: error.details,
@@ -72,10 +69,23 @@ export const GET = withApiErrorHandling(async (req: NextRequest) => {
       pageSize,
       totalPages: count ? Math.ceil(count / pageSize) : 0
     });
-});
+  } catch (error: any) {
+    console.error('[Product Categories API] Fatal Error:', error);
+    return NextResponse.json({ 
+      error: 'Internal Server Error',
+      message: error.message,
+      diagnostics: {
+        hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+        hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      }
+    }, { status: 500 });
+  }
+}
 
 // POST /api/admin/product-categories
-export const POST = withApiErrorHandling(async (req: NextRequest) => {
+export async function POST(req: NextRequest) {
+  try {
     const body = await req.json();
     const { name, code, description, app_id, parent_id, sort_order } = body;
 
@@ -101,4 +111,8 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
     if (error) throw error;
 
     return NextResponse.json({ success: true, data }, { status: 201 });
-});
+  } catch (error: any) {
+    console.error('[Product Categories API] POST Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
