@@ -1,8 +1,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseForRequest } from '@/lib/supabase';
+import { getSupabaseForRequest, safeAfter } from '@/lib/supabase';
 import { SystemLogger } from '@/lib/logger';
-import { withApiErrorHandling, safeAfter } from '@/lib/api-wrapper';
+import { withApiErrorHandling } from '@/lib/api-wrapper';
 
 // GET /api/admin/product-categories
 export const GET = withApiErrorHandling(async (req: NextRequest) => {
