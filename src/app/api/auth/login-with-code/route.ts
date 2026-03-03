@@ -33,6 +33,7 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
     let existingUser = null;
     
     try {
+      // 优先从 public.users 查找，确保业务表同步
       const { data: publicUser } = await admin
         .from('users')
         .select('id')
@@ -44,10 +45,11 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
         existingUser = authUser.user;
       }
     } catch (e) {
-      // Not found or error
+      // 不存在或查询失败
     }
 
     if (!existingUser) {
+        // 如果业务表没找到，从 Auth 系统全局查找
         const { data: usersData, error: listError } = await admin.auth.admin.listUsers();
         if (!listError && usersData) {
             existingUser = usersData.users.find(u => u.email === email);
@@ -55,7 +57,7 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
     }
 
     if (!existingUser) {
-      // 用户不存在，创建新用户
+      // 用户完全不存在，执行【创建】流程
       console.log(`[Login] Creating new user: ${email}`);
       const { data: newUser, error: createError } = await admin.auth.admin.createUser({
         email,
@@ -69,17 +71,9 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
         return NextResponse.json({ error: 'Failed to create user account' }, { status: 500 });
       }
       
-      if (newUser.user) {
-          await admin.from('users').upsert({
-              id: newUser.user.id,
-              email: email,
-              full_name: email.split('@')[0],
-              roles: ['user'],
-              status: 'active'
-          }, { onConflict: 'id' });
-      }
+      existingUser = newUser.user;
     } else {
-      // 用户已存在，更新其密码为当前 code
+      // 用户已存在，执行【密码同步】流程
       console.log(`[Login] Updating existing user: ${email}`);
       const { error: updateError } = await admin.auth.admin.updateUserById(existingUser.id, {
         password: code,
@@ -92,9 +86,27 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
       }
     }
 
+    // --- 核心修复点：无论新建还是更新，都强制同步一次 public.users 记录 ---
+    if (existingUser) {
+        console.log(`[Login] Synchronizing public.users record for: ${email}`);
+        const { error: syncError } = await admin.from('users').upsert({
+            id: existingUser.id,
+            email: email,
+            full_name: email.split('@')[0],
+            roles: ['user'], // 强制确保角色正确
+            status: 'active'
+        }, { onConflict: 'id' });
+
+        if (syncError) {
+            console.error('[Login] Failed to sync to public.users:', syncError);
+            // 这里不中断主流程，因为 Auth 已经创建/更新成功，让用户先能登录
+        }
+    }
+    // -------------------------------------------------------------------
+
     // 4. Generate Supabase Auth Session (Magic Link Token)
-    // We generate a magic link token that the client can use to exchange for a session via verifyOtp
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    // 注意：这里也改用 admin 实例调用以防 this 丢失
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
       type: 'magiclink',
       email: email,
     });
