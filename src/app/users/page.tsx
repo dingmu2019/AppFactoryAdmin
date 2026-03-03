@@ -70,7 +70,17 @@ const UsersPage: React.FC = () => {
       });
 
       const res = await authenticatedFetch(`/api/admin/users?${queryParams}`);
-      const data = await res.json();
+      const text = await res.text();
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', text);
+        setError({ error: `Server Error (${res.status}): ${text.slice(0, 100)}...` });
+        setLoading(false);
+        return;
+      }
       
       if (!res.ok) {
         setError(data);

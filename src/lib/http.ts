@@ -99,7 +99,14 @@ export const apiUrl = (url: string) => {
 };
 
 export const authenticatedFetch = async (url: string, options: FetchOptions = {}) => {
-  const { data: { session } } = await supabase.auth.getSession();
+  let session = null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    session = data.session;
+  } catch (e) {
+    console.warn('[HTTP] Failed to get session:', e);
+  }
+  
   const token = session?.access_token;
 
   const headers: HeadersInit = {
@@ -109,14 +116,8 @@ export const authenticatedFetch = async (url: string, options: FetchOptions = {}
   };
 
   // Next.js API routes are typically relative
-  const response = await fetch(url, {
+  return fetch(url, {
     ...options,
     headers,
   });
-
-  if (response.status === 401) {
-    console.warn('Unauthorized access to', url);
-  }
-
-  return response;
 };

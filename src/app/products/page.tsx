@@ -80,25 +80,34 @@ export default function ProductListPage() {
         authenticatedFetch('/api/admin/apps')
       ]);
       
+      const parseRes = async (res: Response) => {
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          throw new Error(`Server Error (${res.status}): ${text.slice(0, 100)}...`);
+        }
+      };
+
       if (!prodRes.ok) {
-        const data = await prodRes.json().catch(() => null);
+        const data = await parseRes(prodRes).catch(e => ({ error: e.message }));
         setError(data);
         throw new Error(data?.error || t('common.loadFailed'));
       }
       if (!catRes.ok) {
-        const data = await catRes.json().catch(() => null);
+        const data = await parseRes(catRes).catch(e => ({ error: e.message }));
         setError(data);
         throw new Error(data?.error || t('common.loadFailed'));
       }
       if (!appRes.ok) {
-        const data = await appRes.json().catch(() => null);
+        const data = await parseRes(appRes).catch(e => ({ error: e.message }));
         setError(data);
         throw new Error(data?.error || t('common.loadFailed'));
       }
       
-      const prodData = await prodRes.json();
-      const catData = await catRes.json();
-      const appData = await appRes.json();
+      const prodData = await prodRes.json().catch(() => parseRes(prodRes));
+      const catData = await catRes.json().catch(() => parseRes(catRes));
+      const appData = await appRes.json().catch(() => parseRes(appRes));
       
       setProducts(Array.isArray(prodData) ? prodData : (Array.isArray(prodData?.data) ? prodData.data : []));
       setCategories(Array.isArray(catData) ? catData : (Array.isArray(catData?.data) ? catData.data : []));

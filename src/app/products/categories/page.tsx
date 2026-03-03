@@ -30,7 +30,17 @@ export default function ProductCategoriesPage() {
       setLoading(true);
       setError(null);
       const res = await authenticatedFetch('/api/admin/product-categories');
-      const data = await res.json();
+      const text = await res.text();
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error('Failed to parse response as JSON:', text);
+        setError(`Server Error (${res.status}): ${text.slice(0, 100)}...`);
+        setLoading(false);
+        return;
+      }
       
       if (!res.ok) {
         setError(data);
@@ -44,7 +54,7 @@ export default function ProductCategoriesPage() {
       }
     } catch (err: any) {
       console.error('Fetch categories error:', err);
-      if (!error) setError({ error: err.message });
+      if (!error) setError(err.message || 'Unknown error');
     } finally {
       setLoading(false);
     }

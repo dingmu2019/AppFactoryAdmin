@@ -26,8 +26,8 @@ export function withApiErrorHandling(handler: ApiHandler): ApiHandler {
       const appId = req.headers.get('x-app-id') || undefined;
       const userId = req.headers.get('x-user-id') || undefined;
 
-      // Log the error
-      await SystemLogger.logError({
+      // Log the error (don't let logging failure block the response)
+      SystemLogger.logError({
         level: 'ERROR',
         message: error.message || 'Internal Server Error',
         stack_trace: error.stack,
@@ -40,7 +40,7 @@ export function withApiErrorHandling(handler: ApiHandler): ApiHandler {
           userAgent,
           query: Object.fromEntries(req.nextUrl.searchParams),
         }
-      });
+      }).catch(err => console.error('[API Wrapper] Logging failed:', err));
 
       console.error(`[API Error] ${method} ${url}:`, error);
 
