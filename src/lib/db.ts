@@ -155,7 +155,7 @@ export async function getDatabasePool() {
     return globalPool;
   }
 
-  const timeoutMs = 5000; // 5s timeout for each attempt
+  const timeoutMs = 20000; // Increased to 20s for cross-border latency (e.g. China -> AWS Mumbai)
 
   // 1. Try environment variables first (Standard for Vercel/Production)
   // Prefer DATABASE_URL (Pooler) for normal app operations, fallback to DIRECT_URL
@@ -167,11 +167,22 @@ export async function getDatabasePool() {
 
         console.log('Initializing Global Database Pool...');
         console.log('URL (masked):', maskConnectionString(connectionUrl));
+
+        // 针对 Serverless 环境（Vercel, 腾讯 EdgeOne, SCF 等）进行连接池限制优化
+        const isServerless = process.env.VERCEL || 
+                           process.env.TENCENTCLOUD_REGION || 
+                           process.env.SCF_FUNCTION_NAME || 
+                           process.env.EDGEONE_PAGES;
+        
+        const maxConnections = process.env.DB_POOL_MAX ? 
+                              parseInt(process.env.DB_POOL_MAX) : 
+                              (isServerless ? 2 : 10);
+
         globalPool = new Pool({
           connectionString: connectionUrl,
           ssl: { rejectUnauthorized: false },
           connectionTimeoutMillis: timeoutMs,
-          max: process.env.DB_POOL_MAX ? parseInt(process.env.DB_POOL_MAX) : (process.env.VERCEL ? 2 : 10),
+          max: maxConnections,
           idleTimeoutMillis: 30000,
         });
         
@@ -283,7 +294,7 @@ export async function closeDatabaseClient(client: any) {
 }
 
 async function getLegacyClient() {
-  const timeoutMs = 5000; 
+  const timeoutMs = 20000; // Increased to 20s for cross-border latency 
   let connectionUrl = process.env.DATABASE_URL || process.env.DIRECT_URL || process.env.POSTGRES_URL;
   if (connectionUrl) {
     connectionUrl = normalizeDatabaseUrl(connectionUrl);
