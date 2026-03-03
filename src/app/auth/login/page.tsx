@@ -31,6 +31,19 @@ export default function LoginPage() {
   // Code Timer
   const [cooldown, setCooldown] = useState(0);
 
+  // Check for unauthorized error
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('error') === 'unauthorized') {
+      showToast(t('login.error.unauthorized'), 'error');
+      supabase.auth.signOut();
+      
+      // Clear the query param from URL without refreshing
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [showToast, t]);
+
   useEffect(() => {
     let interval: any;
     if (cooldown > 0) {

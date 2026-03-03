@@ -51,6 +51,7 @@ const UsersPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [availableRoles, setAvailableRoles] = useState<any[]>([]);
   
   // Edit Modal State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -104,9 +105,22 @@ const UsersPage: React.FC = () => {
     setPageHeader(t('users.title'), t('users.subtitle'));
   }, [setPageHeader, t]);
 
+  const fetchRoles = async () => {
+    try {
+      const res = await authenticatedFetch('/api/admin/identity/roles');
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableRoles(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch roles:', err);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
-  }, [page, roleFilter, statusFilter]);
+    fetchRoles();
+  }, [page, search, roleFilter, statusFilter]);
 
   const handleEdit = (user: User) => {
       setSelectedUser({ ...user });
@@ -234,8 +248,9 @@ const UsersPage: React.FC = () => {
             className="px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="">{t('common.allRoles')}</option>
-            <option value="admin">{t('users.roles.admin')}</option>
-            <option value="user">{t('users.roles.user')}</option>
+            {availableRoles.map(role => (
+              <option key={role.id} value={role.code.toLowerCase()}>{role.name}</option>
+            ))}
           </select>
 
           <select 
@@ -437,8 +452,16 @@ const UsersPage: React.FC = () => {
                             onChange={(e) => setSelectedUser({ ...selectedUser, roles: [e.target.value] })}
                             className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                         >
-                            <option value="admin">{t('users.roles.admin')}</option>
-                            <option value="user">{t('users.roles.user')}</option>
+                            {availableRoles.length > 0 ? (
+                              availableRoles.map(role => (
+                                <option key={role.id} value={role.code.toLowerCase()}>{role.name}</option>
+                              ))
+                            ) : (
+                              <>
+                                <option value="admin">{t('users.roles.admin')}</option>
+                                <option value="user">{t('users.roles.user')}</option>
+                              </>
+                            )}
                         </select>
                     </div>
                     <div>

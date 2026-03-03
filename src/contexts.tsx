@@ -257,7 +257,7 @@ export const useI18n = () => {
   return context;
 };
 
-import { isSupabaseConfigured, supabase } from './lib/supabase';
+import { isSupabaseConfigured, supabase, COOKIE_DOMAIN } from './lib/supabase';
 import { apiUrl, authenticatedFetch } from './lib/http';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -326,8 +326,10 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       if (_event === 'SIGNED_OUT') {
          setUser(null);
          setSession(null);
-         document.cookie = 'sb-access-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-         document.cookie = 'sb-refresh-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+         
+         const domainSuffix = COOKIE_DOMAIN ? `; Domain=${COOKIE_DOMAIN}` : '';
+         document.cookie = `sb-access-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT${domainSuffix};`;
+         document.cookie = `sb-refresh-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT${domainSuffix};`;
          
          if (!isLoggingOut.current) {
              router.replace('/auth/login');
@@ -450,8 +452,9 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
         setSession(null);
         
         // Clear cookies manually to ensure sync
-        document.cookie = 'sb-access-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        document.cookie = 'sb-refresh-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        const domainSuffix = COOKIE_DOMAIN ? `; Domain=${COOKIE_DOMAIN}` : '';
+        document.cookie = `sb-access-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT${domainSuffix};`;
+        document.cookie = `sb-refresh-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT${domainSuffix};`;
         
         // Clear Supabase local storage just in case
         const projectId = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_ID;

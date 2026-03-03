@@ -14,6 +14,7 @@ export async function middleware(req: NextRequest) {
   const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
                            process.env.NEXT_PUBLIC_SUPABASE_ANC || 
                            '').trim();
+  const cookieDomain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '';
   
   // 初始化 Supabase 客户端，用于处理会话
   const supabase = createServerClient(
@@ -25,13 +26,21 @@ export async function middleware(req: NextRequest) {
           return parseCookieHeader(req.headers.get('Cookie') ?? '')
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => req.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Apply global cookie domain if provided
+            const finalOptions = cookieDomain ? { ...options, domain: cookieDomain } : options;
+            req.cookies.set(name, value);
+          });
           res = NextResponse.next({
             request: {
               headers: req.headers,
             },
           })
-          cookiesToSet.forEach(({ name, value, options }) => res.cookies.set(name, value, options))
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Apply global cookie domain if provided
+            const finalOptions = cookieDomain ? { ...options, domain: cookieDomain } : options;
+            res.cookies.set(name, value, finalOptions);
+          });
         },
       },
     }
@@ -47,42 +56,61 @@ export async function middleware(req: NextRequest) {
   }
 
   const path = req.nextUrl.pathname;
+  const isPublicPath = path.startsWith('/auth') || path.startsWith('/api/public');
 
-  // 如果是公共路由（如 /auth 或 /api/public），则跳过认证检查
-  if (path.startsWith('/auth') || path.startsWith('/api/public')) {
+  // 如果是公共路由，则跳过认证检查
+  if (isPublicPath) {
     return res;
   }
 
-  // API 认证逻辑：保护 /api/admin/* 路由
-  if (path.startsWith('/api/admin')) {
-    // 如果没有通过 Cookie 获取到用户，尝试通过 Authorization Header 校验
-    if (!user) {
-      const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
-      if (authHeader?.startsWith('Bearer ')) {
-        const token = authHeader.split(' ')[1];
-        // 尝试使用 Bearer Token 获取用户
-        try {
-          const { data: { user: bearerUser } } = await supabase.auth.getUser(token);
-          if (bearerUser) {
-            // 如果 Bearer Token 校验成功，允许通过
-            return res;
-          }
-        } catch (e) {
-          console.error('[Middleware] Bearer token validation error:', e);
+  // 如果没有通过 Cookie 获取到用户，尝试通过 Authorization Header 校验 (针对 API 请求)
+  if (!user) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const { data: { user: bearerUser } } = await supabase.auth.getUser(token);
+        if (bearerUser) {
+          user = bearerUser;
         }
-        
+      } catch (e) {
+        console.error('[Middleware] Bearer token validation error:', e);
+      }
+    }
+  }
+
+  // 1. 提取用户角色 (从 user_metadata.role)
+  const role = user?.user_metadata?.role;
+
+  // 2. 如果用户已登录，检查角色权限
+  if (user) {
+    const allowedRoles = ['admin', 'editor', 'viewer'];
+    // 如果角色是 'user' 且不在允许的角色列表中，则拦截
+    const isRestricted = role === 'user' || !allowedRoles.includes(role);
+
+    if (isRestricted) {
+      // 4. 对于 API 路由，返回 403 Forbidden JSON
+      if (path.startsWith('/api/')) {
         return NextResponse.json(
-          { error: 'Unauthorized: Invalid or expired token' },
-          { status: 401 }
+          { error: 'Forbidden: Access denied' },
+          { status: 403 }
         );
       }
-
-      // 如果既没有 Cookie 也没有有效的 Bearer Token
-      return NextResponse.json(
-        { error: 'Unauthorized: Please login first' },
-        { status: 401 }
-      );
+      
+      // 3. 对于页面，重定向到 /auth/login?error=unauthorized
+      const url = req.nextUrl.clone();
+      url.pathname = '/auth/login';
+      url.searchParams.set('error', 'unauthorized');
+      return NextResponse.redirect(url);
     }
+  }
+
+  // API 认证逻辑：保护 /api/admin/* 路由 (针对未登录用户)
+  if (path.startsWith('/api/admin') && !user) {
+    return NextResponse.json(
+      { error: 'Unauthorized: Please login first' },
+      { status: 401 }
+    );
   }
 
   return res;

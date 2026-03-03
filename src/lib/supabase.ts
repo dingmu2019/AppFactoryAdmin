@@ -20,13 +20,24 @@ export function safeAfter(task: () => Promise<any> | any) {
 const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
 const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()
 
+// SSO Cookie Domain Config
+// In development, leave empty to use localhost. 
+// In production, set to '.mc-cwin.com' via environment variables.
+export const COOKIE_DOMAIN = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '';
+
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
 // 默认客户端（匿名/客户端用）
-// 注意：在服务端请求中，如果带有 Authorization Header，此客户端会自动应用 RLS
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder'
+  supabaseAnonKey || 'placeholder',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      storageKey: `sb-${process.env.NEXT_PUBLIC_SUPABASE_PROJECT_ID || 'auth'}-token`,
+    }
+  }
 )
 
 /**

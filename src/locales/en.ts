@@ -673,7 +673,8 @@ export const en = {
       "invalidCodeFormat": "Invalid code format",
       "sendCodeFailed": "Failed to send code",
       "loginFailed": "Login failed",
-      "sessionError": "No session token received"
+      "sessionError": "No session token received",
+      "unauthorized": "Unauthorized access"
     }
   },
   "products": {

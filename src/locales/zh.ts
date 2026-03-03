@@ -673,7 +673,8 @@ export const zh = {
       "invalidCodeFormat": "验证码格式不正确",
       "sendCodeFailed": "发送验证码失败",
       "loginFailed": "登录失败",
-      "sessionError": "会话获取失败"
+      "sessionError": "会话获取失败",
+      "unauthorized": "无权访问本系统"
     }
   },
   "products": {
