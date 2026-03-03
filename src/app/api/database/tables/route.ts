@@ -4,11 +4,11 @@ import { getDatabaseClient, closeDatabaseClient } from '@/lib/db';
 import { requireDatabaseAdmin } from '../_auth';
 
 export async function GET(req: NextRequest) {
-  const auth = await requireDatabaseAdmin(req);
-  if (auth instanceof NextResponse) return auth;
-
   let client;
   try {
+    const auth = await requireDatabaseAdmin(req);
+    if (auth instanceof NextResponse) return auth;
+
     client = await getDatabaseClient();
 
     const query = `

@@ -4,9 +4,6 @@ import { getDatabaseClient, closeDatabaseClient } from '@/lib/db';
 import { requireDatabaseAdmin } from '../_auth';
 
 export async function GET(req: NextRequest) {
-  const auth = await requireDatabaseAdmin(req);
-  if (auth instanceof NextResponse) return auth;
-
   const { searchParams } = new URL(req.url);
   const tableName = searchParams.get('table');
 
@@ -16,6 +13,9 @@ export async function GET(req: NextRequest) {
 
   let client;
   try {
+    const auth = await requireDatabaseAdmin(req);
+    if (auth instanceof NextResponse) return auth;
+
     client = await getDatabaseClient();
 
     // 1. Table Info

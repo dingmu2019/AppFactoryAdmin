@@ -17,14 +17,14 @@ function formatTimestamp(d = new Date()) {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await requireDatabaseAdmin(req);
-  if (auth instanceof NextResponse) return auth;
-
   const url = new URL(req.url);
   const compress = (url.searchParams.get('compress') ?? 'gzip') === 'gzip';
   const clean = url.searchParams.get('clean') === '1';
 
   try {
+    const auth = await requireDatabaseAdmin(req);
+    if (auth instanceof NextResponse) return auth;
+
     const cfg = await getDatabaseDumpConfig();
 
     let pgDumpCmd: string | null = null;

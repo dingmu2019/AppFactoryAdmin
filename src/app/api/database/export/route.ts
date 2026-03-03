@@ -5,10 +5,10 @@ import pg from 'pg';
 import { requireDatabaseAdmin } from '../_auth';
 
 export async function GET(req: NextRequest) {
-  const auth = await requireDatabaseAdmin(req);
-  if (auth instanceof NextResponse) return auth;
-
   try {
+    const auth = await requireDatabaseAdmin(req);
+    if (auth instanceof NextResponse) return auth;
+
     const { searchParams } = new URL(req.url);
     const mode = searchParams.get('mode') as any || 'schema';
     const includeData = searchParams.get('includeData') === 'true';
