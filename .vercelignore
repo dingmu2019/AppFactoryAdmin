@@ -2,10 +2,10 @@ AdminSys-001 his
 sdk
 AdminSys-001-his
 AdminSys-001_his
-scripts
+# scripts
 reports
 docs
-supabase
+# supabase
 uploads
 .trae
 *.pem
@@ -17,7 +17,7 @@ node_modules
 .vercel
 **/*.log
 **/*.local
-backend/scripts
+# backend/scripts
 Admin-Sys
 ai_town
 moltbook
