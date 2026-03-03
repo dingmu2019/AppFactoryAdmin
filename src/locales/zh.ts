@@ -134,7 +134,8 @@ export const zh = {
         "app": "应用",
         "lastUpdated": "最后更新",
         "actions": "操作"
-      }
+      },
+      "deleteConfirmMsg": "确定要删除这个产品分类吗？"
     },
     "productManagement": "产品管理",
     "marketing": {
@@ -215,6 +216,7 @@ export const zh = {
         "screenshotToClipboard": "截图已复制到剪贴板",
         "screenshotCopyFailed": "剪贴板复制失败，已改为下载文件",
         "screenshotFocusWarning": "由于浏览器焦点问题，已改为下载文件",
+        "screenshotExported": "截图已导出",
         "screenshotFailed": "截图失败",
         "exportPDF": "导出 PDF",
         "internalMonologue": "内部独白",
@@ -292,6 +294,7 @@ export const zh = {
           "notFoundTitle": "未找到该辩论",
           "notFoundDesc": "该记录可能已被删除，或者您没有访问权限。",
           "backToList": "返回列表",
+          "printWindowError": "无法打开打印窗口，请检查浏览器是否拦截了弹窗。",
           "screenshotComingSoon": "截图功能即将上线...",
           "completed": "辩论已结束",
           "completedDesc": "结论报告已在讨论过程中生成。",
@@ -667,7 +670,10 @@ export const zh = {
     "error": {
       "emailRequired": "请输入邮箱",
       "invalidCredentials": "账号或密码错误",
-      "invalidCodeFormat": "验证码格式不正确"
+      "invalidCodeFormat": "验证码格式不正确",
+      "sendCodeFailed": "发送验证码失败",
+      "loginFailed": "登录失败",
+      "sessionError": "会话获取失败"
     }
   },
   "products": {
@@ -995,6 +1001,9 @@ export const zh = {
     "allMethods": "全部方法",
     "allCategories": "全部分类",
     "docs": "文档",
+    "errors": {
+      "fetchApiCatalogFailed": "获取 API 目录失败"
+    },
     "loading": "加载中...",
     "empty": "暂无接口",
     "table": {
@@ -1026,6 +1035,9 @@ export const zh = {
       "noAppWarning": "请先创建一个应用以管理 Webhooks。",
       "endpoints": "回调地址",
       "add": "新增",
+      "retry": "重试",
+      "retryTriggered": "重试已触发",
+      "noEvents": "暂无最近事件",
       "endpointUrl": "回调地址 (URL)",
       "noWebhooks": "暂无 Webhooks 配置",
       "events": "事件",

@@ -163,7 +163,7 @@ export default function DebateDetailPage() {
     try {
         await handleExportScreenshot(elementId, `debate-${id}-${elementId}`);
         toast.dismiss();
-        toast.success(t('common.ai.assistant.screenshotSuccess') || 'Screenshot exported');
+        toast.success(t('common.ai.assistant.screenshotExported'));
     } catch (err) {
         console.error(err);
         toast.dismiss();

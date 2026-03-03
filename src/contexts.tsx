@@ -339,7 +339,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   }, [router]);
 
   const login = async (email: string, password: string) => {
-    if (!isSupabaseConfigured || (email === 'admin@example.com' && password === 'password123')) {
+    if (!isSupabaseConfigured) {
       const demoUser = { id: 'demo-user', email, name: 'Admin', role: 'admin' };
       const demoSession = { access_token: 'demo-token' };
       setUser(demoUser);

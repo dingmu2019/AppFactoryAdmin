@@ -129,7 +129,7 @@ export const WebhookConfig: React.FC<WebhookConfigProps> = ({ t: _t }) => {
     const handleRetry = async (id: string) => {
         const res = await authenticatedFetch(`/api/admin/webhooks/events/${id}/retry`, { method: 'POST' });
         if (res.ok) {
-            toast.success('Retry triggered');
+            toast.success(_t('api.webhook.retryTriggered'));
             fetchEvents();
         }
     };
@@ -259,13 +259,13 @@ export const WebhookConfig: React.FC<WebhookConfigProps> = ({ t: _t }) => {
                                             {evt.status === 0 ? 'PENDING' : evt.status}
                                         </span>
                                         {evt.status !== 200 && evt.status !== 0 && (
-                                            <button onClick={() => handleRetry(evt.id)} className="text-indigo-600 hover:text-indigo-700 text-xs font-medium">Retry</button>
+                                            <button onClick={() => handleRetry(evt.id)} className="text-indigo-600 hover:text-indigo-700 text-xs font-medium">{_t('api.webhook.retry')}</button>
                                         )}
                                     </div>
                                 </div>
                             ))}
                             {events.length === 0 && (
-                                <div className="text-center py-8 text-zinc-400 text-sm">No recent events</div>
+                                <div className="text-center py-8 text-zinc-400 text-sm">{_t('api.webhook.noEvents')}</div>
                             )}
                         </div>
                     </CardContent>

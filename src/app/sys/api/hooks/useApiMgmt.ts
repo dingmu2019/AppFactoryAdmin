@@ -35,7 +35,7 @@ export const useApiMgmt = (_t: any) => {
       }
     } catch (err) {
       console.error('Failed to fetch APIs:', err);
-      toast.error('Failed to fetch API catalog');
+      toast.error(_t('api.errors.fetchApiCatalogFailed'));
     } finally {
       setLoading(false);
     }

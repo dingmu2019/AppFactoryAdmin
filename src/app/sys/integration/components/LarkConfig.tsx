@@ -7,10 +7,11 @@ interface Props {
   initialData: Partial<LarkConfig>;
   initialEnabled: boolean;
   onSave: (data: LarkConfig, enabled: boolean) => void;
+  onTest?: (config: LarkConfig, testOptions: { recipient: string; content: string }) => void;
   isSaving: boolean;
 }
 
-export const LarkConfigForm: React.FC<Props> = ({ initialData, initialEnabled, onSave, isSaving }) => {
+export const LarkConfigForm: React.FC<Props> = ({ initialData, initialEnabled, onSave, onTest, isSaving }) => {
   const { t } = useI18n();
   const { showToast } = useToast();
   const [formData, setFormData] = useState<Partial<LarkConfig>>({
@@ -38,15 +39,22 @@ export const LarkConfigForm: React.FC<Props> = ({ initialData, initialEnabled, o
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSendTestMessage = () => {
+  const handleSendTestMessage = async () => {
     if (!testUser) return showToast(t('integration.lark.placeholder.recipient'), 'error');
+    if (!onTest) return;
+
     setIsSending(true);
-    // TODO: Implement backend API call
-    setTimeout(() => {
-        setIsSending(false);
+    try {
+        await onTest(formData as LarkConfig, { 
+            recipient: testUser, 
+            content: testContent 
+        });
         setShowTestModal(false);
-        showToast(t('common.testSuccess'), 'success');
-    }, 1500);
+    } catch (e) {
+        // Error toast is handled by parent handleTest
+    } finally {
+        setIsSending(false);
+    }
   };
 
   return (

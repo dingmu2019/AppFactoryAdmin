@@ -24,8 +24,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   
   // Form State
-  const [email, setEmail] = useState('admin@example.com'); // Default for demo
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
 
   // Code Timer
@@ -65,14 +65,14 @@ export default function LoginPage() {
       console.debug('[auth][send-code] response', { email, status: response.status, ok: response.ok, body: data });
       
       if (!response.ok) {
-        throw new Error(data?.error || 'Failed to send code');
+        throw new Error(data?.error || t('login.error.sendCodeFailed'));
       }
 
       showToast(t('login.codeSent'), 'success');
       setCooldown(60);
     } catch (error: any) {
       console.error('[auth][send-code] failed', { email, message: error?.message, error });
-      showToast(error.message || 'Failed to send verification code', 'error');
+      showToast(error.message || t('login.error.sendCodeFailed'), 'error');
     } finally {
       setIsSendingCode(false);
     }
@@ -112,11 +112,11 @@ export default function LoginPage() {
            const data = await response.json();
 
            if (!response.ok) {
-             throw new Error(data.error || 'Login failed');
+             throw new Error(data.error || t('login.error.loginFailed'));
            }
 
            if (!data.token) {
-             throw new Error('No session token received');
+             throw new Error(t('login.error.sessionError'));
            }
 
            const otpType = (data.type as any) || 'magiclink';

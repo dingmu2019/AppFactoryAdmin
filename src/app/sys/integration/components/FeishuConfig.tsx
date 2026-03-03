@@ -7,10 +7,11 @@ interface Props {
   initialData: Partial<FeishuConfig>;
   initialEnabled: boolean;
   onSave: (data: FeishuConfig, enabled: boolean) => void;
+  onTest?: (config: FeishuConfig, testOptions: { recipient: string; content: string }) => void;
   isSaving: boolean;
 }
 
-export const FeishuConfigForm: React.FC<Props> = ({ initialData, initialEnabled, onSave, isSaving }) => {
+export const FeishuConfigForm: React.FC<Props> = ({ initialData, initialEnabled, onSave, onTest, isSaving }) => {
   const { t } = useI18n();
   const { showToast } = useToast();
   const [formData, setFormData] = useState<Partial<FeishuConfig>>({
@@ -38,15 +39,22 @@ export const FeishuConfigForm: React.FC<Props> = ({ initialData, initialEnabled,
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSendTestMessage = () => {
+  const handleSendTestMessage = async () => {
     if (!testUser) return showToast(t('integration.feishu.placeholder.recipient'), 'error');
+    if (!onTest) return;
+
     setIsSending(true);
-    // TODO: Implement backend API call
-    setTimeout(() => {
-        setIsSending(false);
+    try {
+        await onTest(formData as FeishuConfig, { 
+            recipient: testUser, 
+            content: testContent 
+        });
         setShowTestModal(false);
-        showToast(t('common.testSuccess'), 'success');
-    }, 1500);
+    } catch (e) {
+        // Error toast is handled by parent handleTest
+    } finally {
+        setIsSending(false);
+    }
   };
 
   return (

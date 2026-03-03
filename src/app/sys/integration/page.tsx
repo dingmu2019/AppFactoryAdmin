@@ -129,11 +129,37 @@ export default function IntegrationPage() {
     }
   };
 
-  const handleTest = async (config: any) => {
+  const handleTest = async (config: any, testOptions?: any) => {
     try {
       let endpoint = '';
-      if (activeTab === 'llm') endpoint = '/api/admin/integrations/llm/test';
-      else if (activeTab === 'email') endpoint = '/api/admin/integrations/email/test';
+      let payload: any = config;
+
+      if (activeTab === 'llm') {
+          endpoint = '/api/admin/integrations/llm/test';
+      } else if (activeTab === 'email') {
+          endpoint = '/api/admin/integrations/email/test';
+          // Email test API expects { to, ...config }
+          if (testOptions) payload = { to: testOptions.to, ...config };
+      } else if (['wechat', 'feishu', 'lark'].includes(activeTab)) {
+          endpoint = '/api/admin/integrations/message/test';
+          // Message test API expects { channel, recipient, content, config }
+          if (testOptions) {
+              payload = {
+                  channel: activeTab,
+                  recipient: testOptions.recipient,
+                  content: testOptions.content,
+                  config: config
+              };
+          } else {
+              // Default if no options provided by component
+              payload = {
+                  channel: activeTab,
+                  recipient: 'test_recipient',
+                  content: 'Test message',
+                  config: config
+              };
+          }
+      }
       
       if (!endpoint) return;
 
@@ -141,7 +167,7 @@ export default function IntegrationPage() {
 
       const res = await authenticatedFetch(endpoint, {
         method: 'POST',
-        body: JSON.stringify(config)
+        body: JSON.stringify(payload)
       });
 
       const result = await res.json();

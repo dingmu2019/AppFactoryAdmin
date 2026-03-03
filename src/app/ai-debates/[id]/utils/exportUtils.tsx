@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import i18n from '@/locales';
 // import { toPng } from 'html-to-image';
 // import html2canvas from 'html2canvas';
 
@@ -51,7 +52,7 @@ export const handleExportPDFMsg = (msg: any) => {
         printWindow.document.close();
     } catch (err) {
         console.error('PDF Export failed:', err);
-        alert('Failed to open print window. Please check if popups are blocked.');
+        alert(i18n.t('common.ai.debatesPage.detail.printWindowError'));
     }
 };
 

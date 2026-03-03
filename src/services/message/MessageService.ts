@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import type { IMessageAdapter, MessageResult, SendMessageOptions } from './interfaces';
 import { EmailAdapter } from './adapters/EmailAdapter';
 import { SMSAdapter } from './adapters/SMSAdapter';
+import { WeChatAdapter } from './adapters/WeChatAdapter';
+import { FeishuAdapter } from './adapters/FeishuAdapter';
 import { EncryptionService } from '../EncryptionService';
 import { WebhookService } from '../WebhookService';
 
@@ -56,8 +58,17 @@ export class MessageService {
             case 'sms':
                 adapter = new SMSAdapter();
                 break;
+            case 'wechat':
+                adapter = new WeChatAdapter();
+                break;
+            case 'feishu':
+                adapter = new FeishuAdapter();
+                break;
+            case 'lark':
+                adapter = new FeishuAdapter();
+                (adapter as FeishuAdapter).setProvider('lark');
+                break;
             // case 'whatsapp': adapter = new WhatsAppAdapter(); break;
-            // case 'wechat': adapter = new WeChatAdapter(); break;
             default:
                 throw new Error(`Channel ${channel} not implemented yet`);
         }
@@ -101,6 +112,36 @@ export class MessageService {
                 });
             }
 
+            return {
+                success: false,
+                provider: channel,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Test a message channel with provided config (without saving to DB)
+     */
+    static async sendTestMessage(channel: MessageChannel, options: SendMessageOptions, config: any): Promise<MessageResult> {
+        try {
+            let adapter: IMessageAdapter;
+            switch (channel) {
+                case 'email': adapter = new EmailAdapter(); break;
+                case 'sms': adapter = new SMSAdapter(); break;
+                case 'wechat': adapter = new WeChatAdapter(); break;
+                case 'feishu': adapter = new FeishuAdapter(); break;
+                case 'lark': 
+                    adapter = new FeishuAdapter(); 
+                    (adapter as FeishuAdapter).setProvider('lark'); 
+                    break;
+                default:
+                    throw new Error(`Channel ${channel} not implemented yet`);
+            }
+
+            adapter.initialize(config);
+            return await adapter.sendMessage(options);
+        } catch (error: any) {
             return {
                 success: false,
                 provider: channel,

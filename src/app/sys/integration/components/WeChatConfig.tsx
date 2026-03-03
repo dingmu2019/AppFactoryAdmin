@@ -7,10 +7,11 @@ interface Props {
   initialData: Partial<WeChatConfig>;
   initialEnabled: boolean;
   onSave: (data: WeChatConfig, enabled: boolean) => void;
+  onTest?: (config: WeChatConfig, testOptions: { recipient: string; content: string }) => void;
   isSaving: boolean;
 }
 
-export const WeChatConfigForm: React.FC<Props> = ({ initialData, initialEnabled, onSave, isSaving }) => {
+export const WeChatConfigForm: React.FC<Props> = ({ initialData, initialEnabled, onSave, onTest, isSaving }) => {
   const { t } = useI18n();
   const { showToast } = useToast();
   const [formData, setFormData] = useState<Partial<WeChatConfig>>({
@@ -37,14 +38,22 @@ export const WeChatConfigForm: React.FC<Props> = ({ initialData, initialEnabled,
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSendTestMessage = () => {
+  const handleSendTestMessage = async () => {
     if (!testUser) return showToast(t('integration.wechat.placeholder.recipient'), 'error');
+    if (!onTest) return;
+
     setIsSending(true);
-    setTimeout(() => {
-        setIsSending(false);
+    try {
+        await onTest(formData as WeChatConfig, { 
+            recipient: testUser, 
+            content: testContent 
+        });
         setShowTestModal(false);
-        showToast(`${t('common.testSuccess')} -> ${testUser}`, 'success');
-    }, 1500);
+    } catch (e) {
+        // Error toast is handled by parent handleTest
+    } finally {
+        setIsSending(false);
+    }
   };
 
   return (

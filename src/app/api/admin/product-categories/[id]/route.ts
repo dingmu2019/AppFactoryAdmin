@@ -6,11 +6,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   try {
     const body = await req.json();
-    const { name, code, description, sort_order, is_active } = body;
+    const { name, code, description, sort_order, is_active, app_id, parent_id } = body;
 
     const { data, error } = await supabase
       .from('product_categories')
-      .update({ name, code, description, sort_order, is_active, updated_at: new Date().toISOString() })
+      .update({ 
+        name, 
+        code, 
+        description, 
+        sort_order, 
+        is_active, 
+        app_id,
+        parent_id,
+        updated_at: new Date().toISOString() 
+      })
       .eq('id', id)
       .select()
       .single();

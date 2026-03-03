@@ -7,24 +7,20 @@ dotenv.config();
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; // Must be 256 bits (32 characters)
 const IV_LENGTH = 16; // For AES, this is always 16
 
-if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
-    // Note: We used openssl rand -hex 32 which gives 64 chars hex string = 32 bytes
-    // So length check depends on whether we treat it as hex or raw string.
-    // If process.env.ENCRYPTION_KEY is hex string, buffer length is 32.
+// Fail fast: Validate ENCRYPTION_KEY on module load
+if (!ENCRYPTION_KEY) {
+    throw new Error('ENCRYPTION_KEY is missing in environment variables. Application requires a 32-byte hex string key.');
+}
+
+if (ENCRYPTION_KEY.length !== 64 || !/^[0-9a-fA-F]+$/.test(ENCRYPTION_KEY)) {
+    throw new Error(`ENCRYPTION_KEY must be a 64-character hex string (32 bytes). Current length: ${ENCRYPTION_KEY.length}`);
 }
 
 export class EncryptionService {
     
     private static getKey(): Buffer {
-        const key = process.env.ENCRYPTION_KEY;
-        if (!key) {
-            // For build time or when env is missing, return a dummy key to prevent crash
-            if (process.env.NODE_ENV === 'production') {
-                console.error('CRITICAL: ENCRYPTION_KEY missing in production');
-            }
-            return Buffer.alloc(32); 
-        }
-        return Buffer.from(key, 'hex');
+        // Key is guaranteed to exist and be valid due to module-level check
+        return Buffer.from(process.env.ENCRYPTION_KEY!, 'hex');
     }
 
     /**

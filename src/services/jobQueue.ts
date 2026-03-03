@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { getDatabaseDumpConfig } from '@/lib/db';
 
 dotenv.config();
 
@@ -13,11 +14,38 @@ let boss: any = null;
 export const JobQueue = {
     async init(): Promise<boolean> {
         if (boss) return true;
+        // pg-boss might be too heavy for serverless, but we can try if needed.
+        // Usually job queues run on long-running servers.
         if (process.env.VERCEL) return false;
 
-        const connectionString =
-            process.env.DATABASE_URL ||
-            `postgres://postgres.kkezqharxaqeqzumuehr:${process.env.SUPABASE_DB_PASSWORD}@aws-0-us-west-1.pooler.supabase.com:6543/postgres`;
+        let connectionString = process.env.DATABASE_URL;
+
+        if (!connectionString) {
+             try {
+                // Reuse the robust config resolution from db.ts
+                const config = await getDatabaseDumpConfig();
+                // Construct connection string from config
+                // pg-boss expects a connection string or config object. 
+                // We'll build a string for simplicity as per existing pattern.
+                const user = encodeURIComponent(config.user);
+                const password = encodeURIComponent(config.password || '');
+                const host = config.host;
+                const port = config.port;
+                const dbName = config.database;
+                const sslMode = config.ssl ? '?sslmode=require' : '';
+                
+                connectionString = `postgres://${user}:${password}@${host}:${port}/${dbName}${sslMode}`;
+             } catch (e) {
+                // If unified config fails, we might fall back to the old hardcoded way below, 
+                // or just log warning.
+                console.warn('JobQueue: Failed to resolve database config via unified logic:', e);
+             }
+        }
+        
+        // Fallback for dev environment if getDatabaseDumpConfig failed or returned nothing useful
+        if (!connectionString) {
+             connectionString = `postgres://postgres.kkezqharxaqeqzumuehr:${process.env.SUPABASE_DB_PASSWORD}@aws-0-us-west-1.pooler.supabase.com:6543/postgres`;
+        }
 
         if (!connectionString || /YOUR_DB_PASSWORD/i.test(connectionString) || /undefined/i.test(connectionString)) {
             console.warn('DATABASE_URL not configured correctly. JobQueue (pg-boss) disabled.');

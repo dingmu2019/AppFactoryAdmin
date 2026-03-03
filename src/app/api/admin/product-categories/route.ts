@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabase
       .from('product_categories')
-      .select('*', { count: 'exact' });
+      .select('*, saas_apps(name)', { count: 'exact' });
 
     if (search) {
       query = query.or(`name.ilike.%${search}%,code.ilike.%${search}%`);

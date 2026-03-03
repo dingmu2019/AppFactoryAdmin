@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Layout } from './Layout';
 import { useAuth } from '@/contexts';
@@ -13,6 +13,12 @@ export function AppLayoutWrapper({ children }: { children: React.ReactNode }) {
 
   const isPublic = pathname?.startsWith('/auth') || pathname === '/';
   
+  useEffect(() => {
+    if (!isPublic && !loading && !isAuthenticated) {
+      router.replace('/auth/login');
+    }
+  }, [isPublic, loading, isAuthenticated, router]);
+
   if (isPublic) {
     return <>{children}</>;
   }
@@ -26,7 +32,6 @@ export function AppLayoutWrapper({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    router.replace('/auth/login');
     return null;
   }
   

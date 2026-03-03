@@ -134,7 +134,8 @@ export const en = {
         "app": "App",
         "lastUpdated": "Last Updated",
         "actions": "Actions"
-      }
+      },
+      "deleteConfirmMsg": "Are you sure you want to delete this product category?"
     },
     "productManagement": "Product Management",
     "marketing": {
@@ -215,6 +216,7 @@ export const en = {
         "screenshotToClipboard": "Screenshot copied to clipboard",
         "screenshotCopyFailed": "Clipboard copy failed, downloaded instead",
         "screenshotFocusWarning": "Downloaded instead (browser not focused)",
+        "screenshotExported": "Screenshot exported",
         "screenshotFailed": "Screenshot failed",
         "exportPDF": "Export PDF",
         "internalMonologue": "Internal Monologue",
@@ -291,8 +293,9 @@ export const en = {
           "deleteConfirm": "Are you sure you want to delete this debate? This action cannot be undone.",
           "notFoundTitle": "Debate not found",
           "notFoundDesc": "This debate may have been deleted, or you do not have access.",
-          "backToList": "Back to list",
-          "screenshotComingSoon": "Screenshot is coming soon...",
+          "backToList": "Back to List",
+          "printWindowError": "Failed to open print window. Please check if popups are blocked.",
+          "screenshotComingSoon": "Screenshot coming soon...",
           "completed": "Debate completed",
           "completedDesc": "Summary report is available in the timeline.",
           "running": "Debate in progress",
@@ -667,7 +670,10 @@ export const en = {
     "error": {
       "emailRequired": "Email is required",
       "invalidCredentials": "Invalid credentials",
-      "invalidCodeFormat": "Invalid code format"
+      "invalidCodeFormat": "Invalid code format",
+      "sendCodeFailed": "Failed to send code",
+      "loginFailed": "Login failed",
+      "sessionError": "No session token received"
     }
   },
   "products": {
@@ -995,6 +1001,9 @@ export const en = {
     "allMethods": "All methods",
     "allCategories": "All categories",
     "docs": "Docs",
+    "errors": {
+      "fetchApiCatalogFailed": "Failed to fetch API catalog"
+    },
     "loading": "Loading...",
     "empty": "No APIs found",
     "table": {
@@ -1026,6 +1035,9 @@ export const en = {
       "noAppWarning": "Please create an application first to manage webhooks.",
       "endpoints": "Endpoints",
       "add": "Add",
+      "retry": "Retry",
+      "retryTriggered": "Retry triggered",
+      "noEvents": "No recent events",
       "endpointUrl": "Endpoint URL",
       "noWebhooks": "No webhooks configured",
       "events": "Events",

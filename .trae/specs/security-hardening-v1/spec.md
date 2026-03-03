@@ -1,43 +1,46 @@
-# Security Hardening Spec (v1)
+# 任务列表
 
-## Why
-A recent security audit identified three critical vulnerabilities that expose the system to unauthorized access, data loss, and sensitive information leakage. Immediate remediation is required to secure the platform.
-1. **Authentication Bypass**: Middleware authentication logic is commented out, leaving admin APIs exposed.
-2. **Arbitrary SQL Execution**: An exposed endpoint allows raw SQL execution, posing a severe risk of data destruction or exfiltration.
-3. **Weak Encryption**: The system defaults to a zero-filled key if `ENCRYPTION_KEY` is missing, compromising encrypted data security.
+* [x] 任务 1: 全路由功能扫描与异常识别
 
-## What Changes
-- **Enable Middleware Authentication**: Uncomment and enforce authentication checks in `middleware.ts` for `/api/admin` routes.
-- **Remove Dangerous Endpoint**: Delete the `/api/admin/database/sql` endpoint to eliminate the risk of arbitrary SQL execution.
-- **Enforce Strong Encryption**: Modify `EncryptionService` to throw a fatal error if `ENCRYPTION_KEY` is missing or invalid, preventing the use of weak default keys.
+  * [x] 子任务 1.1: 遍历 `src/app` 下的所有目录，列出所有前端路由。
 
-## Impact
-- **Affected Specs**: None directly, but security posture is significantly improved.
-- **Affected Code**:
-    - `middleware.ts`: Re-enabling auth logic.
-    - `src/app/api/admin/database/sql/route.ts`: File deletion.
-    - `src/lib/encryption.ts`: enforcing key presence.
-    - `src/services/EncryptionService.ts`: (if applicable) ensuring service initialization fails without a key.
+  * [x] 子任务 1.2: 使用工具或人工访问关键页面（AI 助手、数据库、订单、系统管理等），记录控制台错误。
 
-## MODIFIED Requirements
+  * [x] 子任务 1.3: 检查各页面的 API 调用是否返回 200，识别 404 或 500 的接口。
 
-### Requirement: Middleware Authentication
-The system SHALL enforce authentication for all protected routes.
-- **Scenario: Admin Access**
-    - **WHEN** an unauthenticated user accesses `/api/admin/*`
-    - **THEN** the system MUST return a 401 Unauthorized response or redirect to login.
-- **Scenario: Public Access**
-    - **WHEN** a user accesses public routes (e.g., `/api/public/*`, `/auth/*`)
-    - **THEN** the system MUST allow access without authentication.
+* [x] 任务 2: 多语言（i18n）覆盖度审计
 
-### Requirement: Encryption Key Management
-The system SHALL NOT start or operate if a secure encryption key is not provided.
-- **Scenario: Missing Key**
-    - **WHEN** the application starts without `ENCRYPTION_KEY` environment variable
-    - **THEN** the Encryption Service MUST throw an error and prevent the application from using unsafe defaults.
+  * [x] 子任务 2.1: 搜索代码中硬编码的汉字和常用英文词汇（如 "Save", "Cancel", "Search"）。
 
-## REMOVED Requirements
+  * [x] 子任务 2.2: 验证 `src/locales/index.ts` 中中英文 key 的对称性。
 
-### Requirement: Raw SQL Execution Endpoint
-**Reason**: The `/api/admin/database/sql` endpoint poses an unacceptable security risk (SQL Injection / Arbitrary Execution) and violates security best practices.
-**Migration**: Administrators must use direct database access tools (e.g., Supabase Dashboard, pgAdmin) for ad-hoc queries.
+  * [x] 子任务 2.3: 重点检查最近更新的功能（如数据库备份、AI 讨论新控件）的文案。
+
+* [x] 任务 3: 核心业务流程回归测试
+
+  * [x] 子任务 3.1: 测试 AI 对话功能（切换 Agent、发送消息、显示名称）。
+
+  * [x] 子任务 3.2: 测试数据库工具（查看结构、数据浏览、一键备份、导出 SQL）。
+
+  * [x] 子任务 3.3: 测试基础管理模块（用户、角色、审计日志等）的列表显示与过滤。
+
+* [x] 任务 4: 修复识别出的功能与多语言问题
+
+  * [x] 子任务 4.1: 修复页面崩溃或接口调用失败的问题。
+
+  * [x] 子任务 4.2: 将硬编码文案替换为 `t()` 调用，并在字典文件中补齐。
+
+  * [x] 子任务 4.3: 确保所有 Toast 提示和 Modal 弹窗均已国际化。
+
+* [x] 任务 5: 最终生产构建验证
+
+  * [x] 子任务 5.1: 运行 `npm run build` 确保无 TypeScript 错误。
+
+  * [x] 子任务 5.2: 启动服务并进行最后一次多语言切换核对。
+
+# 任务依赖
+
+* \[任务 4] 依赖于 \[任务 1] 和 \[任务 2]
+
+* \[任务 5] 依赖于 \[任务 4]
+
