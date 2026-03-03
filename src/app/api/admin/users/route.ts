@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseForRequest } from '@/lib/supabase';
 import { withApiErrorHandling } from '@/lib/api-wrapper';
+import { SystemLogger } from '@/lib/logger';
 
 /**
  * @openapi
@@ -36,6 +37,15 @@ export const GET = withApiErrorHandling(async (req: NextRequest) => {
   const role = searchParams.get('role');
   const status = searchParams.get('status');
   
+  // 诊断环境变量信息（非敏感）
+  const envDiagnostics = {
+    hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    nodeEnv: process.env.NODE_ENV,
+    vercelEnv: process.env.VERCEL_ENV || 'local',
+  };
+
   // 使用 getSupabaseForRequest 而非 getSupabaseAdmin
   // 这样如果 SERVICE_ROLE_KEY 缺失，仍能尝试利用当前登录管理员的身份令牌(JWT)绕过 RLS
   const supabase = getSupabaseForRequest(req);
@@ -65,21 +75,47 @@ export const GET = withApiErrorHandling(async (req: NextRequest) => {
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      // 记录详细错误日志到数据库
+      await SystemLogger.logError({
+        level: 'ERROR',
+        message: `[User Management API] Fetch failed: ${error.message}`,
+        stack_trace: error.details || error.hint,
+        path: '/api/admin/users',
+        method: 'GET',
+        context: {
+          error,
+          envDiagnostics,
+          query: Object.fromEntries(searchParams)
+        }
+      });
+      return NextResponse.json({ 
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        diagnostics: envDiagnostics
+      }, { status: 500 });
+    }
 
     // Calculate "Today New"
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const { count: todayNew } = await supabase
+    const { count: todayNew, error: todayNewError } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', today.toISOString());
+
+    if (todayNewError) {
+       console.error('[User Management API] Today new count error:', todayNewError);
+       // We don't necessarily fail the whole request for this.
+    }
 
     return NextResponse.json({
       data,
       total: count,
       page,
       pageSize,
-      todayNew: todayNew || 0
+      todayNew: todayNew || 0,
+      _debug: process.env.NODE_ENV === 'development' ? { envDiagnostics } : undefined
     });
 });
