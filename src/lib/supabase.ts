@@ -1,8 +1,8 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
+const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
@@ -23,7 +23,7 @@ let adminClientMode: 'service' | 'anon' | null = null;
 let adminClientKeySig: string | null = null;
 
 export const getSupabaseAdmin = () => {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   const desiredMode: 'service' | 'anon' = serviceKey ? 'service' : 'anon';
   const desiredKeySig = serviceKey ? serviceKey.slice(0, 12) : supabaseAnonKey.slice(0, 12);
 
@@ -31,8 +31,6 @@ export const getSupabaseAdmin = () => {
   if (adminClient && adminClientMode === desiredMode && adminClientKeySig === desiredKeySig) return adminClient;
   
   // 如果 Key 变化了或第一次加载，重新初始化
-  console.log(`[Supabase] Initializing admin client with mode: ${desiredMode}`);
-  
   if (!serviceKey) {
     if (process.env.NODE_ENV === 'production') {
       console.warn('[Supabase] WARNING: SUPABASE_SERVICE_ROLE_KEY is missing in production! Falling back to Anon Key.');
@@ -64,7 +62,7 @@ export const getSupabaseAdmin = () => {
 };
 
 export const getSupabaseForRequest = (req: Request) => {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   if (serviceKey) return getSupabaseAdmin();
 
   const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';

@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { getSupabaseForRequest } from '@/lib/supabase';
 import { withApiErrorHandling } from '@/lib/api-wrapper';
 
 export const PUT = withApiErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
@@ -8,6 +8,7 @@ export const PUT = withApiErrorHandling(async (req: NextRequest, { params }: { p
     const body = await req.json();
     const { full_name, roles, status } = body;
 
+    const supabase = getSupabaseForRequest(req);
     const { data, error } = await supabase
       .from('users')
       .update({ full_name, roles, status })
@@ -22,6 +23,7 @@ export const PUT = withApiErrorHandling(async (req: NextRequest, { params }: { p
 
 export const DELETE = withApiErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
+    const supabase = getSupabaseForRequest(req);
 
     // 1. Delete from auth.users (this will cascade to public.users usually, or we do both)
     // Using admin auth client

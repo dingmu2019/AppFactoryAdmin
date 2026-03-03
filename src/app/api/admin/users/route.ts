@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase';
+import { getSupabaseForRequest } from '@/lib/supabase';
 import { withApiErrorHandling } from '@/lib/api-wrapper';
 
 /**
@@ -36,7 +36,9 @@ export const GET = withApiErrorHandling(async (req: NextRequest) => {
   const role = searchParams.get('role');
   const status = searchParams.get('status');
   
-  const supabase = getSupabaseAdmin();
+  // 使用 getSupabaseForRequest 而非 getSupabaseAdmin
+  // 这样如果 SERVICE_ROLE_KEY 缺失，仍能尝试利用当前登录管理员的身份令牌(JWT)绕过 RLS
+  const supabase = getSupabaseForRequest(req);
 
     let query = supabase
       .from('users')

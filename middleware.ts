@@ -9,10 +9,16 @@ export async function middleware(req: NextRequest) {
     },
   });
   
+  // 兼容截断后的环境变量名
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+  const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
+                           process.env.NEXT_PUBLIC_SUPABASE_ANC || 
+                           '').trim();
+  
   // 初始化 Supabase 客户端，用于处理会话
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl || 'https://placeholder.supabase.co',
+    supabaseAnonKey || 'placeholder',
     {
       cookies: {
         getAll() {
