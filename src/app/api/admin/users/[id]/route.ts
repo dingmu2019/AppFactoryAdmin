@@ -14,9 +14,14 @@ export const PUT = withApiErrorHandling(async (req: NextRequest, { params }: { p
     // 映射 RBAC role code 到基础 user_role 枚举，避免数据库报错
     const enumRoles = (roles || []).map((r: string) => {
         const lower = r.toLowerCase();
+        // 映射逻辑：
+        // 1. 包含 admin 的角色映射为基础 admin
+        // 2. operator, editor 映射为 editor
+        // 3. auditor, viewer 映射为 viewer
+        // 4. 其他映射为 user
         if (lower.includes('admin')) return 'admin';
-        if (lower.includes('editor')) return 'editor';
-        if (lower.includes('viewer')) return 'viewer';
+        if (lower.includes('editor') || lower === 'operator') return 'editor';
+        if (lower.includes('viewer') || lower === 'auditor') return 'viewer';
         return 'user';
     });
 

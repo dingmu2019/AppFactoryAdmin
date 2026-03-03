@@ -122,8 +122,13 @@ const UsersPage: React.FC = () => {
     fetchRoles();
   }, [page, search, roleFilter, statusFilter]);
 
-  const handleEdit = (user: User) => {
-      setSelectedUser({ ...user });
+  const handleEdit = (user: any) => {
+      // 优先从 RBAC 系统中提取角色代码，如果没有则回退到基础 roles
+      const rbacRoleCodes = user.rbac_roles && user.rbac_roles.length > 0 
+          ? user.rbac_roles.map((item: any) => item.role.code)
+          : user.roles;
+          
+      setSelectedUser({ ...user, roles: rbacRoleCodes });
       setShowEditModal(true);
   };
 
@@ -356,12 +361,21 @@ const UsersPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
-                        {u.roles?.map(role => (
-                            <span key={role} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
-                                <ShieldCheck size={10} />
-                                {translateRole(role)}
-                            </span>
-                        ))}
+                        {u.rbac_roles && u.rbac_roles.length > 0 ? (
+                            u.rbac_roles.map((item: any) => (
+                                <span key={item.role.code} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
+                                    <ShieldCheck size={10} />
+                                    {item.role.name}
+                                </span>
+                            ))
+                        ) : (
+                            u.roles?.map(role => (
+                                <span key={role} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
+                                    <ShieldCheck size={10} />
+                                    {translateRole(role)}
+                                </span>
+                            ))
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
