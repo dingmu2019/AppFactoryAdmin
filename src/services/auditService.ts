@@ -80,6 +80,11 @@ export class AuditLogService {
    * Record an audit log entry
    */
   static async log(entry: CreateAuditLogDTO) {
+    // Fire and forget - don't await to avoid blocking business logic
+    this._doLog(entry).catch(err => console.error('[AuditLog] Uncaught background error:', err));
+  }
+
+  private static async _doLog(entry: CreateAuditLogDTO) {
     try {
       const resolvedAppId =
         (await this.resolveAppId(entry.app_id)) ||
@@ -91,10 +96,8 @@ export class AuditLogService {
         .from('audit_logs')
         .insert([finalEntry]);
 
-
       if (error) {
         console.error('Failed to write audit log:', error);
-        // Don't throw error to avoid blocking the main business logic
       }
     } catch (err) {
       console.error('Unexpected error writing audit log:', err);
