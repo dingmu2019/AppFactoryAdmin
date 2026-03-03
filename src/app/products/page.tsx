@@ -47,9 +47,10 @@ export default function ProductListPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [apps, setApps] = useState<App[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAppId, setFilterAppId] = useState('');
-  
+
   // Modal
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -71,6 +72,7 @@ export default function ProductListPage() {
 
   const fetchData = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const [prodRes, catRes, appRes] = await Promise.all([
         authenticatedFetch('/api/admin/products'),
@@ -80,14 +82,17 @@ export default function ProductListPage() {
       
       if (!prodRes.ok) {
         const data = await prodRes.json().catch(() => null);
+        setError(data);
         throw new Error(data?.error || t('common.loadFailed'));
       }
       if (!catRes.ok) {
         const data = await catRes.json().catch(() => null);
+        setError(data);
         throw new Error(data?.error || t('common.loadFailed'));
       }
       if (!appRes.ok) {
         const data = await appRes.json().catch(() => null);
+        setError(data);
         throw new Error(data?.error || t('common.loadFailed'));
       }
       
@@ -299,6 +304,32 @@ export default function ProductListPage() {
             <span>{t('products.filter.more')}</span>
         </button>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg text-rose-700 dark:text-rose-400">
+          <div className="flex items-center gap-2 font-bold mb-2">
+            <Trash2 size={18} />
+            {t('common.error')}
+          </div>
+          <div className="text-sm space-y-2">
+            <p className="font-medium">{error.error || error.message}</p>
+            {error.details && <p className="opacity-80">Details: {error.details}</p>}
+            {error.hint && <p className="opacity-80">Hint: {error.hint}</p>}
+            {error.diagnostics && (
+              <div className="mt-4 pt-4 border-t border-rose-200/50 dark:border-rose-800/50">
+                <p className="text-xs font-bold uppercase tracking-wider mb-2 opacity-60">System Diagnostics:</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px] font-mono">
+                  <div>SUPABASE_URL: <span className={error.diagnostics.hasUrl ? 'text-emerald-500' : 'text-rose-500'}>{error.diagnostics.hasUrl ? 'SET' : 'MISSING'}</span></div>
+                  <div>ANON_KEY: <span className={error.diagnostics.hasAnonKey ? 'text-emerald-500' : 'text-rose-500'}>{error.diagnostics.hasAnonKey ? 'SET' : 'MISSING'}</span></div>
+                  <div>SERVICE_KEY: <span className={error.diagnostics.hasServiceRoleKey ? 'text-emerald-500' : 'text-rose-500'}>{error.diagnostics.hasServiceRoleKey ? 'SET' : 'MISSING'}</span></div>
+                  <div>ENV: {error.diagnostics.nodeEnv} ({error.diagnostics.vercelEnv})</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">

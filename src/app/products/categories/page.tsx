@@ -14,7 +14,7 @@ export default function ProductCategoriesPage() {
   const { showToast } = useToast();
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<any>(null);
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,16 +28,23 @@ export default function ProductCategoriesPage() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await authenticatedFetch('/api/admin/product-categories');
-      if (!res.ok) throw new Error(t('common.productCategories.fetchFailed'));
       const data = await res.json();
+      
+      if (!res.ok) {
+        setError(data);
+        throw new Error(data.error || t('common.productCategories.fetchFailed'));
+      }
+      
       if (data.success) {
         setCategories(data.data || []);
       } else {
-        setError(data.error || t('common.productCategories.fetchFailed'));
+        setError(data);
       }
     } catch (err: any) {
-      setError(err.message);
+      console.error('Fetch categories error:', err);
+      if (!error) setError({ error: err.message });
     } finally {
       setLoading(false);
     }
@@ -84,6 +91,32 @@ export default function ProductCategoriesPage() {
           <span>{t('common.productCategories.new')}</span>
         </button>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg text-rose-700 dark:text-rose-400">
+          <div className="flex items-center gap-2 font-bold mb-2">
+            <Trash2 size={18} />
+            {t('common.error')}
+          </div>
+          <div className="text-sm space-y-2">
+            <p className="font-medium">{error.error || error.message}</p>
+            {error.details && <p className="opacity-80">Details: {error.details}</p>}
+            {error.hint && <p className="opacity-80">Hint: {error.hint}</p>}
+            {error.diagnostics && (
+              <div className="mt-4 pt-4 border-t border-rose-200/50 dark:border-rose-800/50">
+                <p className="text-xs font-bold uppercase tracking-wider mb-2 opacity-60">System Diagnostics:</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px] font-mono">
+                  <div>SUPABASE_URL: <span className={error.diagnostics.hasUrl ? 'text-emerald-500' : 'text-rose-500'}>{error.diagnostics.hasUrl ? 'SET' : 'MISSING'}</span></div>
+                  <div>ANON_KEY: <span className={error.diagnostics.hasAnonKey ? 'text-emerald-500' : 'text-rose-500'}>{error.diagnostics.hasAnonKey ? 'SET' : 'MISSING'}</span></div>
+                  <div>SERVICE_KEY: <span className={error.diagnostics.hasServiceRoleKey ? 'text-emerald-500' : 'text-rose-500'}>{error.diagnostics.hasServiceRoleKey ? 'SET' : 'MISSING'}</span></div>
+                  <div>ENV: {error.diagnostics.nodeEnv} ({error.diagnostics.vercelEnv})</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="bg-white dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-sm flex gap-4">

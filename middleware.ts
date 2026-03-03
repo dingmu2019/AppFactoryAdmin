@@ -51,8 +51,24 @@ export async function middleware(req: NextRequest) {
 
   // API 认证逻辑：保护 /api/admin/* 路由
   if (path.startsWith('/api/admin')) {
+    // 如果没有通过 Cookie 获取到用户，尝试通过 Authorization Header 校验
     if (!user) {
-      // 如果未登录，返回 401 未授权错误
+      const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        // 尝试使用 Bearer Token 获取用户
+        const { data: { user: bearerUser } } = await supabase.auth.getUser(token);
+        if (!bearerUser) {
+          return NextResponse.json(
+            { error: 'Unauthorized: Invalid or expired token' },
+            { status: 401 }
+          );
+        }
+        // 如果 Bearer Token 校验成功，允许通过
+        return res;
+      }
+
+      // 如果既没有 Cookie 也没有有效的 Bearer Token
       return NextResponse.json(
         { error: 'Unauthorized: Please login first' },
         { status: 401 }
