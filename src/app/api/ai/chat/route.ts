@@ -4,19 +4,35 @@ import { modelRouter } from '@/services/ai/ModelRouter';
 import { loadLLMConfigsIntoRouter } from '@/services/ai/loadLLMConfigs';
 import { supabaseAdmin } from '@/lib/supabase';
 import type { AIRequest } from '@/services/ai/types';
+import { withApiErrorHandling } from '@/lib/api-wrapper';
 
 let lastInitAtMs = 0;
 let initPromise: Promise<boolean> | null = null;
 
 async function ensureProvidersLoaded() {
   const now = Date.now();
-  if (initPromise) return initPromise;
-  if (lastInitAtMs && now - lastInitAtMs < 60_000) return true;
+  
+  // If already initialized and not expired (60s cache), return true
+  if (lastInitAtMs && now - lastInitAtMs < 60_000 && modelRouter.getRegisteredConfigs().length > 0) {
+    return true;
+  }
 
+  // If initialization is already in progress, wait for it
+  if (initPromise) {
+    console.log('[AI Chat] Waiting for existing initialization to complete...');
+    return initPromise;
+  }
+
+  console.log('[AI Chat] Initializing AI providers...');
   initPromise = loadLLMConfigsIntoRouter(modelRouter as any, supabaseAdmin as any)
     .then((ok) => {
       lastInitAtMs = Date.now();
+      console.log(`[AI Chat] Providers initialized: ${ok}`);
       return ok;
+    })
+    .catch(err => {
+      console.error('[AI Chat] Provider initialization failed:', err);
+      return false;
     })
     .finally(() => {
       initPromise = null;
@@ -25,8 +41,7 @@ async function ensureProvidersLoaded() {
   return initPromise;
 }
 
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withApiErrorHandling(async (req: NextRequest) => {
     const body = await req.json();
     const { messages, systemPrompt, agentId, complexity } = body;
 
@@ -59,13 +74,9 @@ export async function POST(req: NextRequest) {
         systemPrompt,
         complexity: complexity || 'simple',
         // tools: ...
-    };
+    } as any; // Cast to avoid strict type check for now
 
-    const response = await modelRouter.routeRequest(aiRequest);
+    const response = await (modelRouter as any).routeRequest(aiRequest);
 
     return NextResponse.json({ content: response.content });
-  } catch (error: any) {
-    console.error('[API] Internal Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+});

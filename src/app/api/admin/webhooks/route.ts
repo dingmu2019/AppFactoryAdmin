@@ -2,9 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { webhookService } from '@/services/WebhookService';
+import { withApiErrorHandling } from '@/lib/api-wrapper';
 
-export async function GET(req: NextRequest) {
-  try {
+export const GET = withApiErrorHandling(async (req: NextRequest) => {
     const { searchParams } = new URL(req.url);
     const appId = searchParams.get('appId');
     if (!appId || appId === 'undefined' || appId === '') {
@@ -19,17 +19,10 @@ export async function GET(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
+});
 
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withApiErrorHandling(async (req: NextRequest) => {
     const body = await req.json();
     const config = await webhookService.saveConfig(body);
     return NextResponse.json({ success: true, data: config });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
+});

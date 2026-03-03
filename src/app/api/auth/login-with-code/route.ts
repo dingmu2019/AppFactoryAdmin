@@ -1,9 +1,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withApiErrorHandling } from '@/lib/api-wrapper';
 
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withApiErrorHandling(async (req: NextRequest) => {
     const body = await req.json();
     const { email, code } = body;
 
@@ -46,9 +46,4 @@ export async function POST(req: NextRequest) {
         token: linkData.properties.hashed_token,
         type: 'magiclink' 
     });
-
-  } catch (error: any) {
-    console.error('Login with code error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+});

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { EmailService } from '@/services/emailService';
 import { NotificationService } from '@/services/notification/notificationService';
+import { withApiErrorHandling } from '@/lib/api-wrapper';
 
 // In-memory storage for verification codes (Fallback if DB table is missing)
 const memoryVerificationCodes = new Map<string, { code: string, expiresAt: number }>();
@@ -16,8 +17,7 @@ function generateCode(): string {
   return code;
 }
 
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withApiErrorHandling(async (req: NextRequest) => {
     const body = await req.json();
     const { email } = body;
     console.log('[auth][send-code] request', { email });
@@ -69,8 +69,4 @@ export async function POST(req: NextRequest) {
 
     console.log('[auth][send-code] sent', { email });
     return NextResponse.json({ success: true, message: 'Verification code sent' });
-  } catch (error: any) {
-    console.error('[auth][send-code] error', { error: error.message });
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+});

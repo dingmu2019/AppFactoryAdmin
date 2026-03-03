@@ -89,16 +89,14 @@ export class ModelRouter {
     let eligibleConfigs = this.configs;
 
     if (request.model) {
-      eligibleConfigs = eligibleConfigs.filter(c => c.model === request.model);
-      if (eligibleConfigs.length === 0) {
+      const filtered = eligibleConfigs.filter(c => c.model === request.model);
+      if (filtered.length > 0) {
+        eligibleConfigs = filtered;
+      } else {
+        // Log warning but fallback to other models if exact match fails?
+        // Or strictly fail? Let's strictly fail for now as user asked for specific model
         throw new Error(`Requested model not available: ${request.model}`);
       }
-    }
-
-    if (request.complexity === 'simple') {
-      // Prefer faster/cheaper models (e.g., flash, mini, 3.5)
-      // We can filter configs by model name heuristics if explicit tagging isn't available
-      // For now, we rely on the priority order set in DB config
     }
 
     if (eligibleConfigs.length === 0) {
@@ -106,7 +104,7 @@ export class ModelRouter {
         if (totalRegistered === 0) {
             throw new Error('No AI providers are registered. Please check your Integration Center configuration and ensure your API keys are correct and decrypted successfully.');
         }
-        throw new Error(`Requested model not available: ${request.model || 'default'}`);
+        throw new Error(`No eligible providers found for model: ${request.model || 'default'}`);
     }
 
     // 2. Iterate through providers with Circuit Breaker check
@@ -125,15 +123,26 @@ export class ModelRouter {
       if (!provider) continue;
 
       try {
-        console.log(`[ModelRouter] Routing to ${provider.name} (Priority ${config.priority})`);
+        console.log(`[ModelRouter] Routing to ${config.provider}:${config.model} (Priority ${config.priority})`);
         attemptedCount++;
+        
+        // Ensure provider is instantiated
+        // (It should be in map if registerProvider was called correctly)
+        
         const response = await provider.chat(request);
         
         this.circuitBreaker.recordSuccess(config.id);
-        return { ...response, provider: provider.name, model: config.model };
+        
+        // Return standardized response
+        return { 
+            content: response.content,
+            provider: config.provider, 
+            model: config.model,
+            usage: response.usage
+        };
 
-      } catch (error) {
-        console.error(`[ModelRouter] Provider ${provider.name} failed:`, error);
+      } catch (error: any) {
+        console.error(`[ModelRouter] Provider ${config.provider}:${config.model} failed:`, error);
         this.circuitBreaker.recordFailure(config.id);
         lastError = error;
         // Continue to next provider (Fallback)
@@ -141,7 +150,7 @@ export class ModelRouter {
     }
 
     if (attemptedCount === 0 && skippedCount > 0) {
-        throw new Error(`All AI providers are currently unavailable (Circuit Breaker Open). Please try again in 1 minute.`);
+        throw new Error(`All eligible AI providers are currently unavailable (Circuit Breaker Open). Please try again in 1 minute.`);
     }
 
     throw new Error(`All AI providers failed. Last error: ${lastError?.message || lastError}`);

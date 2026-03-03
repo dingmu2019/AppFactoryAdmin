@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { withApiErrorHandling } from '@/lib/api-wrapper';
 
 /**
  * @openapi
@@ -27,14 +28,13 @@ import { supabaseAdmin as supabase } from '@/lib/supabase';
  *       200:
  *         description: 用户列表
  */
-export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '20');
-    const search = searchParams.get('search');
-    const role = searchParams.get('role');
-    const status = searchParams.get('status');
+export const GET = withApiErrorHandling(async (req: NextRequest) => {
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get('page') || '1');
+  const pageSize = parseInt(searchParams.get('pageSize') || '20');
+  const search = searchParams.get('search');
+  const role = searchParams.get('role');
+  const status = searchParams.get('status');
 
     let query = supabase
       .from('users')
@@ -78,7 +78,4 @@ export async function GET(req: NextRequest) {
       pageSize,
       todayNew: todayNew || 0
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+});

@@ -1,9 +1,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { withApiErrorHandling } from '@/lib/api-wrapper';
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
+export const PUT = withApiErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
     const body = await req.json();
     const { full_name, roles, status } = body;
@@ -18,13 +18,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+});
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
+export const DELETE = withApiErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const { id } = await params;
 
     // 1. Delete from auth.users (this will cascade to public.users usually, or we do both)
@@ -43,7 +39,4 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (dbError) console.warn('Failed to delete public user record (might have been cascaded):', dbError.message);
 
     return new NextResponse(null, { status: 204 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+});

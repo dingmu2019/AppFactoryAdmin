@@ -1,15 +1,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { withApiErrorHandling } from '@/lib/api-wrapper';
 
-export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const category_id = searchParams.get('category_id');
-    const status = searchParams.get('status');
-    const app_id = searchParams.get('app_id');
+export const GET = withApiErrorHandling(async (req: NextRequest) => {
+  const { searchParams } = new URL(req.url);
+  const category_id = searchParams.get('category_id');
+  const status = searchParams.get('status');
+  const app_id = searchParams.get('app_id');
 
-    let query = supabase
+  let query = supabase
       .from('products')
       .select(`
         *,
@@ -26,13 +26,9 @@ export async function GET(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+});
 
-export async function POST(req: NextRequest) {
-  try {
+export const POST = withApiErrorHandling(async (req: NextRequest) => {
     const body = await req.json();
     const { sku, name, type, price, category_id, description, status, images, stock, app_id } = body;
     
@@ -46,7 +42,4 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+});

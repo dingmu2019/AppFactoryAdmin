@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { withApiErrorHandling } from '@/lib/api-wrapper';
 
 type Trend = 'up' | 'down' | 'neutral';
 
@@ -54,8 +55,7 @@ const safeText = (v: any) => {
   }
 };
 
-export async function GET(req: NextRequest) {
-  try {
+export const GET = withApiErrorHandling(async (req: NextRequest) => {
     const { searchParams } = new URL(req.url);
     const range = String(searchParams.get('range') || 'last12Months');
     const now = new Date();
@@ -216,7 +216,4 @@ export async function GET(req: NextRequest) {
       revenueSeries,
       notifications
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+});

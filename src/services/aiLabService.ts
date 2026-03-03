@@ -452,27 +452,51 @@ export class AILabService {
   private static async callLLM(userPrompt: string, systemPrompt?: string): Promise<string> {
     // 默认使用 localhost:3000 (Next.js 默认端口) 或环境变量
     const port = process.env.PORT || 3000;
+    // 在部署环境下，优先使用真实的外部 URL，否则 AI Lab 可能无法调通内部 API
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${port}`;
     
-    try {
-      const response = await fetch(`${baseUrl}/api/ai/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-secret': process.env.SUPABASE_SERVICE_ROLE_KEY!
-        },
-        body: JSON.stringify({ 
-          messages: [{ role: 'user', content: userPrompt }], 
-          systemPrompt 
-        })
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const data: any = await response.json();
-      return data.content;
-    } catch (e) {
-      console.error("LLM Call Failed", e);
-      return `[LLM Error: ${e}]`;
+    console.log(`[AILabService] Calling LLM via ${baseUrl}/api/ai/chat`);
+    
+    let lastError: any = null;
+    const maxRetries = 2;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch(`${baseUrl}/api/ai/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-secret': process.env.SUPABASE_SERVICE_ROLE_KEY!
+          },
+          body: JSON.stringify({ 
+            messages: [{ role: 'user', content: userPrompt }], 
+            systemPrompt 
+          }),
+          // 增加超时设置，防止 Vercel/EdgeOne 函数超时导致挂起
+          signal: AbortSignal.timeout(60000) 
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`AI Chat API Error (${response.status}): ${errorText}`);
+        }
+
+        const data: any = await response.json();
+        if (!data.content) {
+          throw new Error('AI Chat API returned empty content');
+        }
+        return data.content;
+
+      } catch (e: any) {
+        lastError = e;
+        console.error(`[AILabService] LLM Call Attempt ${attempt + 1} Failed:`, e.message);
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 2000 * (attempt + 1))); // 指数退避
+        }
+      }
     }
+    
+    return `[LLM Error after ${maxRetries + 1} attempts: ${lastError?.message || lastError}]`;
   }
 
   /**

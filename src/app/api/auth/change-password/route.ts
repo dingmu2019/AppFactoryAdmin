@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { AuditLogService } from '@/services/auditService';
+import { withApiErrorHandling } from '@/lib/api-wrapper';
 
 function evaluatePasswordPolicy(input: { email?: string; newPassword: string }) {
   const errors: string[] = [];
@@ -32,12 +33,14 @@ function evaluatePasswordPolicy(input: { email?: string; newPassword: string }) 
   return errors;
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withApiErrorHandling(async (req: NextRequest) => {
   const adminSysAppId = (await AuditLogService.getAdminSysAppId()) || 'AdminSys_app';
   let userId: string | undefined;
   let ipAddress: string | undefined;
   let userAgent: string | undefined;
 
+  // Manual try-catch removed to let wrapper handle unexpected errors
+  // But we keep specific logic for audit logs
   try {
     const authHeader = req.headers.get('authorization') || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : '';
@@ -125,6 +128,7 @@ export async function POST(req: NextRequest) {
         details: { method: 'password_change', has_current_password: false, reason: err?.message || 'Change password failed' }
       });
     } catch {}
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    // Re-throw to wrapper
+    throw err;
   }
-}
+});

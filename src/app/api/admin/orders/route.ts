@@ -1,15 +1,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { withApiErrorHandling } from '@/lib/api-wrapper';
 
-export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '10');
-    const orderNo = searchParams.get('orderNo');
-    const status = searchParams.get('status');
-    const appId = searchParams.get('appId');
+export const GET = withApiErrorHandling(async (req: NextRequest) => {
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get('page') || '1');
+  const pageSize = parseInt(searchParams.get('pageSize') || '10');
+  const orderNo = searchParams.get('orderNo');
+  const status = searchParams.get('status');
+  const appId = searchParams.get('appId');
 
     let query = supabase
       .from('orders')
@@ -45,7 +45,4 @@ export async function GET(req: NextRequest) {
       pageSize,
       totalPages
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+});
