@@ -1,4 +1,4 @@
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { supabaseAdmin as supabase, safeAfter } from '@/lib/supabase';
 
 export interface CreateAuditLogDTO {
   user_id?: string;
@@ -80,8 +80,9 @@ export class AuditLogService {
    * Record an audit log entry
    */
   static async log(entry: CreateAuditLogDTO) {
-    // Fire and forget - don't await to avoid blocking business logic
-    this._doLog(entry).catch(err => console.error('[AuditLog] Uncaught background error:', err));
+    // Use safeAfter to ensure logging completes without blocking response
+    // and preventing Serverless environment freeze
+    safeAfter(() => this._doLog(entry));
   }
 
   private static async _doLog(entry: CreateAuditLogDTO) {

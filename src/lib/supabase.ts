@@ -1,5 +1,21 @@
 
 import { createClient } from '@supabase/supabase-js'
+import { unstable_after as after } from 'next/server';
+
+/**
+ * Utility to run a task after the response is sent, preventing Serverless environment freeze.
+ * Safe to call even if 'after()' is not supported in the current environment.
+ */
+export function safeAfter(task: () => Promise<any> | any) {
+  try {
+    // Next.js 'after' only works within a request context
+    after(task);
+  } catch (e) {
+    // Fallback if 'after()' is called outside of request scope (e.g., in a cron job or build time)
+    // In this case, we just execute the task immediately
+    task();
+  }
+}
 
 const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
 const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()

@@ -2,9 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseForRequest } from '@/lib/supabase';
 import { SystemLogger } from '@/lib/logger';
+import { withApiErrorHandling, safeAfter } from '@/lib/api-wrapper';
 
-export async function GET(req: NextRequest) {
-  try {
+export const GET = withApiErrorHandling(async (req: NextRequest) => {
     const { searchParams } = new URL(req.url);
     const category_id = searchParams.get('category_id');
     const status = searchParams.get('status');
@@ -38,14 +38,14 @@ export async function GET(req: NextRequest) {
 
     if (error) {
         // 记录详细错误日志 (异步)
-        SystemLogger.logError({
+        safeAfter(() => SystemLogger.logError({
             level: 'ERROR',
             message: `[Products API] Fetch failed: ${error.message}`,
             stack_trace: error.details || error.hint,
             path: '/api/admin/products',
             method: 'GET',
             context: { error, envDiagnostics }
-        });
+        }));
         
         return NextResponse.json({ 
             error: error.message,
@@ -55,16 +55,4 @@ export async function GET(req: NextRequest) {
         }, { status: 500 });
     }
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('[Products API] Fatal Error:', error);
-    return NextResponse.json({ 
-      error: 'Internal Server Error',
-      message: error.message,
-      diagnostics: {
-        hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-        hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      }
-    }, { status: 500 });
-  }
-}
+});

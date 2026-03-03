@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseForRequest } from '@/lib/supabase';
 import { SystemLogger } from '@/lib/logger';
+import { withApiErrorHandling, safeAfter } from '@/lib/api-wrapper';
 
 /**
  * @openapi
@@ -13,8 +14,7 @@ import { SystemLogger } from '@/lib/logger';
  *       200:
  *         description: 用户列表
  */
-export async function GET(req: NextRequest) {
-  try {
+export const GET = withApiErrorHandling(async (req: NextRequest) => {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '20');
@@ -57,14 +57,14 @@ export async function GET(req: NextRequest) {
       .range(from, to);
 
     if (error) {
-      SystemLogger.logError({
+      safeAfter(() => SystemLogger.logError({
         level: 'ERROR',
         message: `[User Management API] Fetch failed: ${error.message}`,
         stack_trace: error.details || error.hint,
         path: '/api/admin/users',
         method: 'GET',
         context: { error, envDiagnostics }
-      });
+      }));
       return NextResponse.json({ 
         error: error.message,
         details: error.details,
@@ -89,16 +89,4 @@ export async function GET(req: NextRequest) {
       todayNew: todayNew || 0,
       _debug: process.env.NODE_ENV === 'development' ? { envDiagnostics } : undefined
     });
-  } catch (error: any) {
-    console.error('[Users API] Fatal Error:', error);
-    return NextResponse.json({ 
-      error: 'Internal Server Error',
-      message: error.message,
-      diagnostics: {
-        hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-        hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      }
-    }, { status: 500 });
-  }
-}
+});
