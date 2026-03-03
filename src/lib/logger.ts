@@ -1,5 +1,5 @@
 import pino from 'pino';
-import { supabaseAdmin as supabase } from './supabase';
+import { getSupabaseAdmin } from './supabase';
 
 // Create Pino Logger
 export const logger = pino({
@@ -39,24 +39,26 @@ export const SystemLogger = {
       err: entry.stack_trace ? { stack: entry.stack_trace } : undefined
     }, entry.message);
 
-    // 2. Persist to DB (Keep existing logic)
+    // 2. Persist to DB
     try {
-      // Check if supabase is initialized correctly (URL/Key check happens in supabase.ts)
+      const supabase = getSupabaseAdmin();
+      
+      // Log to 'system_error_logs'
       const { error } = await supabase.from('system_error_logs').insert([{
         level: entry.level,
         message: entry.message.substring(0, 1000),
         stack_trace: entry.stack_trace,
         context: entry.context || {},
-        app_id: entry.app_id,
+        app_id: entry.app_id || 'AdminSys',
         user_id: entry.user_id,
         ip_address: entry.ip_address,
         path: entry.path,
         method: entry.method,
         resolved: false
       }]);
-
+      
       if (error) {
-        logger.error({ err: error }, 'SystemLogger: Failed to insert log to DB');
+        logger.error({ err: error }, 'SystemLogger: Failed to insert log to system_error_logs');
       }
     } catch (err) {
       logger.error({ err }, 'SystemLogger: Unexpected error writing to DB');

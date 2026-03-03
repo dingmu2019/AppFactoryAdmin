@@ -186,9 +186,6 @@ export async function getDatabasePool() {
           idleTimeoutMillis: 30000,
         });
         
-        // Test connection
-        const client = await globalPool.connect();
-        client.release();
         return globalPool;
     } catch (err: any) {
       console.error('DATABASE_URL pool init failed:', err.message);
@@ -212,8 +209,6 @@ export async function getDatabasePool() {
         max: process.env.DB_POOL_MAX ? parseInt(process.env.DB_POOL_MAX) : (process.env.VERCEL ? 2 : 10),
         idleTimeoutMillis: 30000,
       });
-      const client = await globalPool.connect();
-      client.release();
       return globalPool;
     } catch (err: any) {
       console.error('Host vars pool init failed:', err.message);
@@ -255,8 +250,6 @@ export async function getDatabasePool() {
       idleTimeoutMillis: 30000,
     });
 
-    const client = await globalPool.connect();
-    client.release();
     return globalPool;
   } catch (err: any) {
     console.error('Dynamic config pool init failed:', err.message);

@@ -9,7 +9,7 @@ import { DataView } from './components/DataView';
 import { SqlScriptView } from './components/SqlScriptView';
 import { ProcedureView } from './components/ProcedureView';
 import { useToast, useI18n, usePageHeader } from '@/contexts';
-import { authenticatedFetch } from '@/lib/http';
+import { authenticatedFetch, safeResponseJson } from '@/lib/http';
 import type { SchemaInfo, ProcedureInfo } from './types';
 
 type Tab = 'schema' | 'data' | 'sql' | 'procedure';
@@ -54,7 +54,7 @@ export default function DatabasePage() {
     setError(null);
     try {
       const res = await authenticatedFetch('/api/database/tables');
-      const json = await res.json();
+      const json = await safeResponseJson(res);
       
       if (!res.ok) throw new Error(json.error || 'Failed to fetch tables');
       
@@ -75,7 +75,7 @@ export default function DatabasePage() {
     setProceduresLoading(true);
     try {
       const res = await authenticatedFetch('/api/database/procedures');
-      const json = await res.json();
+      const json = await safeResponseJson(res);
       if (!res.ok) throw new Error(json.error || 'Failed to fetch procedures');
       setProcedures(json);
       if (json.length > 0 && !selectedProcedure && listType === 'procedures') {
@@ -111,7 +111,7 @@ export default function DatabasePage() {
       setSchemaLoading(true);
       try {
         const res = await authenticatedFetch(`/api/database/schema?table=${selectedTable}`);
-        const json = await res.json();
+        const json = await safeResponseJson(res);
         
         if (!res.ok) throw new Error(json.error || 'Failed to fetch schema');
         
@@ -136,7 +136,7 @@ export default function DatabasePage() {
       setProcedureLoading(true);
       try {
         const res = await authenticatedFetch(`/api/database/procedures/definition?oid=${selectedProcedure}`);
-        const json = await res.json();
+        const json = await safeResponseJson(res);
         if (!res.ok) throw new Error(json.error || 'Failed to fetch procedure definition');
         
         const proc = procedures.find(p => p.oid === selectedProcedure);

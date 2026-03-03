@@ -140,6 +140,8 @@ export default function IntegrationPage() {
           endpoint = '/api/admin/integrations/email/test';
           // Email test API expects { to, ...config }
           if (testOptions) payload = { to: testOptions.to, ...config };
+      } else if (activeTab === 'database') {
+          endpoint = '/api/admin/integrations/database/test';
       } else if (['wechat', 'feishu', 'lark'].includes(activeTab)) {
           endpoint = '/api/admin/integrations/message/test';
           // Message test API expects { channel, recipient, content, config }

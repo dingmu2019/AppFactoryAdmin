@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { withApiErrorHandling } from '@/lib/api-wrapper';
 
 /**
@@ -35,6 +35,8 @@ export const GET = withApiErrorHandling(async (req: NextRequest) => {
   const search = searchParams.get('search');
   const role = searchParams.get('role');
   const status = searchParams.get('status');
+  
+  const supabase = getSupabaseAdmin();
 
     let query = supabase
       .from('users')

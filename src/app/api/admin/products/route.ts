@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 import { withApiErrorHandling } from '@/lib/api-wrapper';
 
 export const GET = withApiErrorHandling(async (req: NextRequest) => {
@@ -8,6 +8,8 @@ export const GET = withApiErrorHandling(async (req: NextRequest) => {
   const category_id = searchParams.get('category_id');
   const status = searchParams.get('status');
   const app_id = searchParams.get('app_id');
+  
+  const supabase = getSupabaseAdmin();
 
   let query = supabase
       .from('products')
@@ -32,6 +34,8 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
     const body = await req.json();
     const { sku, name, type, price, category_id, description, status, images, stock, app_id } = body;
     
+    const supabase = getSupabaseAdmin();
+
     const { data, error } = await supabase
       .from('products')
       .insert([{

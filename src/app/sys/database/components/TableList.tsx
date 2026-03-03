@@ -74,7 +74,8 @@ export const TableList: React.FC<TableListProps> = ({
     ? tables.filter(t => {
         const term = searchTerm.toLowerCase();
         const matchName = t.name.toLowerCase().includes(term);
-        const matchField = t.columns && t.columns.some((c: string) => c.toLowerCase().includes(term));
+        // Safely check if columns is an array before calling some
+        const matchField = Array.isArray(t.columns) && t.columns.some((c: string) => c.toLowerCase().includes(term));
         return matchName || matchField;
       })
     : procedures.filter(p => {
@@ -310,7 +311,8 @@ export const TableList: React.FC<TableListProps> = ({
              const term = searchTerm.toLowerCase();
              
              if (listType === 'tables') {
-               const matchField = searchTerm && item.columns?.some((c: string) => c.toLowerCase().includes(term)) && !item.name.toLowerCase().includes(term);
+               // Safely check if columns is an array before calling some
+               const matchField = searchTerm && Array.isArray(item.columns) && item.columns.some((c: string) => c.toLowerCase().includes(term)) && !item.name.toLowerCase().includes(term);
                
                return (
                 <button

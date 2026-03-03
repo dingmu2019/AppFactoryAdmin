@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDatabaseClient, closeDatabaseClient } from '@/lib/db';
 import { requireDatabaseAdmin } from '../_auth';
 
+export const runtime = 'nodejs';
+
 export async function GET(req: NextRequest) {
   let client;
   try {
@@ -14,7 +16,14 @@ export async function GET(req: NextRequest) {
     const query = `
       SELECT 
         c.relname as name,
-        pg_catalog.obj_description(c.oid, 'pg_class') as comment
+        pg_catalog.obj_description(c.oid, 'pg_class') as comment,
+        (
+          SELECT array_agg(a.attname ORDER BY a.attnum)
+          FROM pg_catalog.pg_attribute a
+          WHERE a.attrelid = c.oid
+          AND a.attnum > 0
+          AND NOT a.attisdropped
+        ) as columns
       FROM pg_catalog.pg_class c
       LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
       WHERE c.relkind IN ('r','p') -- r = ordinary table, p = partitioned table
@@ -24,23 +33,10 @@ export async function GET(req: NextRequest) {
 
     const result = await client.query(query);
     
-    const columnsQuery = `
-        SELECT table_name, column_name 
-        FROM information_schema.columns 
-        WHERE table_schema = 'public'
-    `;
-    const columnsResult = await client.query(columnsQuery);
-    
-    const tableColumns: Record<string, string[]> = {};
-    columnsResult.rows.forEach((row: any) => {
-        if (!tableColumns[row.table_name]) tableColumns[row.table_name] = [];
-        tableColumns[row.table_name].push(row.column_name);
-    });
-
     const tables = result.rows.map((row: any) => ({
       name: row.name,
       comment: row.comment,
-      columns: tableColumns[row.name] || []
+      columns: row.columns || []
     }));
 
     return NextResponse.json(tables);
