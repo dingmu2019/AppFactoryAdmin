@@ -1,7 +1,4 @@
-import dotenv from 'dotenv';
 import { getDatabaseDumpConfig } from '@/lib/db';
-
-dotenv.config();
 
 // Initialize PgBoss
 // Note: We need a direct connection string to the DB, not HTTP API URL.

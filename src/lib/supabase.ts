@@ -19,36 +19,61 @@ export const supabase = createClient(
  * 避免在 Build Time 提前固化空值，同时确保 Service Role 真正生效以绕过 RLS
  */
 let adminClient: any = null;
+let adminClientMode: 'service' | 'anon' | null = null;
+let adminClientKeySig: string | null = null;
 
 export const getSupabaseAdmin = () => {
-  if (adminClient) return adminClient;
-
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const desiredMode: 'service' | 'anon' = serviceKey ? 'service' : 'anon';
+  const desiredKeySig = serviceKey ? serviceKey.slice(0, 12) : supabaseAnonKey.slice(0, 12);
+
+  if (adminClient && adminClientMode === desiredMode && adminClientKeySig === desiredKeySig) return adminClient;
   
   if (!serviceKey) {
     if (process.env.NODE_ENV === 'production') {
-      console.error('[Supabase] CRITICAL: SUPABASE_SERVICE_ROLE_KEY is missing in production! Admin operations will fail due to RLS.');
+      console.error('[Supabase] CRITICAL: SUPABASE_SERVICE_ROLE_KEY is missing in production! Admin operations may fail due to RLS.');
     }
-    // 回退到 Anon Key 会导致后台功能因 RLS 限制而无法显示数据（除非用户本身是 DB 中的 Admin）
     adminClient = createClient(
       supabaseUrl || 'https://placeholder.supabase.co',
       supabaseAnonKey || 'placeholder',
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
-  } else {
-    adminClient = createClient(
-      supabaseUrl || 'https://placeholder.supabase.co',
-      serviceKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
+    adminClientMode = 'anon';
+    adminClientKeySig = supabaseAnonKey.slice(0, 12);
+    return adminClient;
   }
+
+  adminClient = createClient(
+    supabaseUrl || 'https://placeholder.supabase.co',
+    serviceKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+  adminClientMode = 'service';
+  adminClientKeySig = serviceKey.slice(0, 12);
   
   return adminClient;
+};
+
+export const getSupabaseForRequest = (req: Request) => {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceKey) return getSupabaseAdmin();
+
+  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+  return createClient(
+    supabaseUrl || 'https://placeholder.supabase.co',
+    supabaseAnonKey || 'placeholder',
+    {
+      auth: { autoRefreshToken: false, persistSession: false },
+      global: token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+    }
+  );
 };
 
 // 导出别名以保持向后兼容，但建议后续使用 getSupabaseAdmin()

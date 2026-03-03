@@ -1,17 +1,6 @@
 
 import crypto from 'crypto';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; // Must be 256 bits (32 characters)
 const IV_LENGTH = 16; // For AES, this is always 16
-
-if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
-    // Note: We used openssl rand -hex 32 which gives 64 chars hex string = 32 bytes
-    // So length check depends on whether we treat it as hex or raw string.
-    // If process.env.ENCRYPTION_KEY is hex string, buffer length is 32.
-}
 
 export class EncryptionService {
     

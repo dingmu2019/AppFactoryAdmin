@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase';
+import { getSupabaseForRequest } from '@/lib/supabase';
 
 // GET /api/admin/product-categories
 export async function GET(req: NextRequest) {
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search');
     const appId = searchParams.get('app_id');
     
-    const supabase = getSupabaseAdmin();
+    const supabase = getSupabaseForRequest(req);
 
     let query = supabase
       .from('product_categories')
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name and Code are required' }, { status: 400 });
     }
     
-    const supabase = getSupabaseAdmin();
+    const supabase = getSupabaseForRequest(req);
 
     const { data, error } = await supabase
       .from('product_categories')

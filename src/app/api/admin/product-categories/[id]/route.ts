@@ -1,12 +1,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { getSupabaseForRequest } from '@/lib/supabase';
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
     const body = await req.json();
     const { name, code, description, sort_order, is_active, app_id, parent_id } = body;
+    const supabase = getSupabaseForRequest(req);
 
     const { data, error } = await supabase
       .from('product_categories')
@@ -34,6 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
+    const supabase = getSupabaseForRequest(req);
     const { error } = await supabase
       .from('product_categories')
       .delete()

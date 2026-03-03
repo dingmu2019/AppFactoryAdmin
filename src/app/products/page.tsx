@@ -96,7 +96,7 @@ export default function ProductListPage() {
       const appData = await appRes.json();
       
       setProducts(Array.isArray(prodData) ? prodData : []);
-      setCategories(Array.isArray(catData) ? catData : []);
+      setCategories(Array.isArray(catData) ? catData : (Array.isArray(catData?.data) ? catData.data : []));
       setApps(Array.isArray(appData) ? appData : []);
     } catch (error) {
       showToast((error as any)?.message || t('common.loadFailed'), 'error');

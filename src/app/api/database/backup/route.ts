@@ -20,10 +20,12 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const compress = (url.searchParams.get('compress') ?? 'gzip') === 'gzip';
   const clean = url.searchParams.get('clean') === '1';
+  let auth: any = null;
 
   try {
-    const auth = await requireDatabaseAdmin(req);
-    if (auth instanceof NextResponse) return auth;
+    const authResult = await requireDatabaseAdmin(req);
+    if (authResult instanceof NextResponse) return authResult;
+    auth = authResult;
 
     const cfg = await getDatabaseDumpConfig();
 
@@ -184,13 +186,17 @@ export async function GET(req: NextRequest) {
 
     return new NextResponse(Readable.toWeb(out) as any, { headers });
   } catch (error: any) {
-    await AuditLogService.log({
-      user_id: auth.userId,
-      action: 'DATABASE_BACKUP',
-      resource: 'database',
-      details: { error: error?.message || 'Unexpected error' },
-      status: 'FAILURE',
-    });
+    try {
+      if (auth?.userId) {
+        await AuditLogService.log({
+          user_id: auth.userId,
+          action: 'DATABASE_BACKUP',
+          resource: 'database',
+          details: { error: error?.message || 'Unexpected error' },
+          status: 'FAILURE',
+        });
+      }
+    } catch {}
     return NextResponse.json({ error: error?.message || 'Backup failed' }, { status: 500 });
   }
 }

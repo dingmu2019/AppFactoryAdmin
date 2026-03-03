@@ -1,9 +1,6 @@
 import { Client, Pool } from 'pg';
 import { supabaseAdmin } from './supabase';
-import dotenv from 'dotenv';
 import { EncryptionService } from '@/services/EncryptionService';
-
-dotenv.config();
 
 // Global Pool Instance
 let globalPool: Pool | null = null;

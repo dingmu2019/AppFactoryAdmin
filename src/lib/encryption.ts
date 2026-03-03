@@ -1,26 +1,18 @@
 
 import crypto from 'crypto';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; // Must be 256 bits (32 characters)
 const IV_LENGTH = 16; // For AES, this is always 16
-
-// Fail fast: Validate ENCRYPTION_KEY on module load
-if (!ENCRYPTION_KEY) {
-    throw new Error('ENCRYPTION_KEY is missing in environment variables. Application requires a 32-byte hex string key.');
-}
-
-if (ENCRYPTION_KEY.length !== 64 || !/^[0-9a-fA-F]+$/.test(ENCRYPTION_KEY)) {
-    throw new Error(`ENCRYPTION_KEY must be a 64-character hex string (32 bytes). Current length: ${ENCRYPTION_KEY.length}`);
-}
 
 export class EncryptionService {
     
     private static getKey(): Buffer {
-        // Key is guaranteed to exist and be valid due to module-level check
-        return Buffer.from(process.env.ENCRYPTION_KEY!, 'hex');
+        const key = process.env.ENCRYPTION_KEY;
+        if (!key) {
+            throw new Error('ENCRYPTION_KEY is missing in environment variables');
+        }
+        if (key.length !== 64 || !/^[0-9a-fA-F]+$/.test(key)) {
+            throw new Error(`ENCRYPTION_KEY must be a 64-character hex string (32 bytes). Current length: ${key.length}`);
+        }
+        return Buffer.from(key, 'hex');
     }
 
     /**

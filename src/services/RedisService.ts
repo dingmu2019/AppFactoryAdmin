@@ -1,17 +1,13 @@
 
 import { Redis as IORedis } from 'ioredis';
 import type { Redis as RedisClient } from 'ioredis';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const redisUrl = process.env.REDIS_URL;
 
 // We use a singleton pattern for Redis client
 let redisClient: RedisClient | null = null;
 
 export const RedisService = {
     getClientOptional: (): RedisClient | null => {
+        const redisUrl = process.env.REDIS_URL;
         if (!redisUrl || redisUrl === 'undefined' || redisUrl === '') return null;
         if (redisClient) return redisClient;
         try {

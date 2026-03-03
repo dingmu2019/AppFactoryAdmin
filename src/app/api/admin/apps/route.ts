@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { getSupabaseForRequest } from '@/lib/supabase';
 import crypto from 'crypto';
 
 // Helper to generate keys
@@ -12,6 +12,7 @@ const generateCredentials = () => {
 
 export async function GET(req: NextRequest) {
   try {
+    const supabase = getSupabaseForRequest(req);
     const { data, error } = await supabase
       .from('saas_apps')
       .select('*')
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { name, description, status, config, id, allowed_ips, template } = body;
     const { apiKey, apiSecret } = generateCredentials();
+    const supabase = getSupabaseForRequest(req);
     
     // In Next.js App Router, we'd typically get user from session/context
     // For now, we'll rely on what Supabase client provides or request context if middleware sets it
