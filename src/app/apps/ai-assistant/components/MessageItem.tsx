@@ -41,12 +41,32 @@ export const MessageItem: React.FC<MessageItemProps> = ({
 }) => {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
+  const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
 
   const handleCopy = () => {
     onCopy(msg.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Parse System2 Thinking (Internal Monologue)
+  let displayContent = msg.content;
+  let internalMonologue = null;
+  try {
+      const jsonStr = msg.content.trim();
+      if ((jsonStr.startsWith('{') && jsonStr.endsWith('}')) || jsonStr.includes('internal_monologue') || jsonStr.includes('public_speech')) {
+          let cleanJson = jsonStr;
+          if (cleanJson.startsWith('```json')) {
+              cleanJson = cleanJson.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          } else if (cleanJson.startsWith('```')) {
+              cleanJson = cleanJson.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          }
+          const json = JSON.parse(cleanJson);
+          displayContent = json.public_speech || json.speech || json.content || msg.content;
+          internalMonologue = json.internal_monologue || json.thought || json.analysis || null;
+      }
+  } catch (e) {}
+
   return (
     <div id={`msg-${msg.id}`} className={`flex gap-6 group animate-in fade-in slide-in-from-bottom-4 duration-700 ${msg.role === 'user' ? 'flex-row-reverse' : 'items-start'}`}>
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg transition-transform duration-500 group-hover:scale-110 ${
@@ -73,6 +93,24 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             : 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 rounded-lg rounded-tl-none border border-zinc-200 dark:border-zinc-800 shadow-sm'
         }`}>
           <div className={`markdown-body max-w-none break-words text-[15px] leading-snug selection:bg-indigo-200 dark:selection:bg-indigo-500/30 ${msg.role === 'user' ? '[&_*]:text-white' : ''}`}>
+            {/* System2 Thinking */}
+            {msg.role !== 'user' && internalMonologue && (
+              <div className="mb-4 border-l-2 border-indigo-500/30 pl-4 py-1">
+                <button 
+                  onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
+                  className="flex items-center gap-2 text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-2 hover:text-indigo-600 transition-colors"
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full bg-indigo-500 ${isThinkingExpanded ? '' : 'animate-pulse'}`} />
+                  {isThinkingExpanded ? t('common.ai.assistant.hideInternalMonologue') : t('common.ai.assistant.internalMonologue')}
+                </button>
+                {isThinkingExpanded && (
+                  <div className="text-xs italic text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{internalMonologue}</ReactMarkdown>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Attachments */}
             {msg.attachments && msg.attachments.length > 0 && (
               <div className="flex flex-wrap gap-3 mb-4">
@@ -109,7 +147,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                 }
               }}
             >
-              {msg.content}
+              {displayContent}
             </ReactMarkdown>
           </div>
 

@@ -4,10 +4,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MessageSquare } from 'lucide-react';
-import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { ConfirmModal } from '@/components/ConfirmModal';
-import { useI18n } from '@/contexts';
+import { useI18n, useToast } from '@/contexts';
 import { DebateHeader } from './components/DebateHeader';
 import { DebateOverviewBar } from './components/DebateOverviewBar';
 import { SummaryMessage } from './components/SummaryMessage';
@@ -22,6 +21,7 @@ export default function DebateDetailPage() {
   const id = params?.id as string;
   const router = useRouter();
   const { t } = useI18n();
+  const { showToast } = useToast();
   
   const { debate, isLoading, timeLeft, messagesEndRef, messagesContainerRef, handleScroll, fetchDetail } = useDebateDetail(id);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -85,11 +85,11 @@ export default function DebateDetailPage() {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!response.ok) throw new Error(t('common.deleteFailed'));
-                toast.success(t('common.deleteSuccess'));
+                showToast(t('common.deleteSuccess'), 'success');
                 router.push('/ai-debates');
             } catch (err) {
                 console.error(err);
-                toast.error(t('common.deleteFailed'));
+                showToast(t('common.deleteFailed'), 'error');
             } finally { setIsDeleting(false); }
         }
     });
@@ -111,11 +111,11 @@ export default function DebateDetailPage() {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!response.ok) throw new Error(t('common.ai.debatesPage.detail.stopFailed'));
-                toast.success(t('common.ai.debatesPage.detail.stopSuccess'));
+                showToast(t('common.ai.debatesPage.detail.stopSuccess'), 'success');
                 fetchDetail();
             } catch (err) {
                 console.error(err);
-                toast.error(t('common.ai.debatesPage.detail.stopFailed'));
+                showToast(t('common.ai.debatesPage.detail.stopFailed'), 'error');
             } finally { setIsStopping(false); }
         }
     });
@@ -147,10 +147,10 @@ export default function DebateDetailPage() {
         const copyText = `${t('common.ai.debatesPage.detail.topicLabel')}: ${topic}\n${t('common.ai.debatesPage.detail.publicLinkLabel')}: ${url}`;
         
         await handleCopy(copyText, false); // Pass false to avoid double success toast
-        toast.success(t('common.ai.debatesPage.detail.shareCopied'));
+        showToast(t('common.ai.debatesPage.detail.shareCopied'), 'success');
     } catch (err: any) {
         console.error('Share failed:', err);
-        toast.error(err?.message || t('common.ai.debatesPage.detail.shareFailed'));
+        showToast(err?.message || t('common.ai.debatesPage.detail.shareFailed'), 'error');
     } finally {
         setIsSharing(false);
     }
@@ -160,24 +160,26 @@ export default function DebateDetailPage() {
     const el = document.getElementById(elementId);
     if (!el) return;
     
-    toast.loading(t('common.ai.assistant.preparingScreenshot'));
+    showToast(t('common.ai.assistant.preparingScreenshot'), 'info');
     try {
-        await handleExportScreenshot(elementId, `debate-${id}-${elementId}`);
-        toast.dismiss();
-        toast.success(t('common.ai.assistant.screenshotExported'));
+        const result = await handleExportScreenshot(elementId, `debate-${id}-${elementId}`);
+        if (result?.method === 'clipboard') {
+            showToast(t('common.ai.assistant.screenshotToClipboard'), 'success');
+        } else {
+            showToast(t('common.ai.assistant.screenshotExported'), 'success');
+        }
     } catch (err) {
         console.error(err);
-        toast.dismiss();
-        toast.error(t('common.ai.assistant.screenshotFailed'));
+        showToast(t('common.ai.assistant.screenshotFailed'), 'error');
     }
   };
 
-  const handleCopy = async (text: string, showToast = true) => {
+  const handleCopy = async (text: string, shouldShowToast = true) => {
     if (!text) return;
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
-        if (showToast) toast.success(t('common.copySuccess'));
+        if (shouldShowToast) showToast(t('common.copySuccess'), 'success');
       } else {
         // Fallback for non-secure contexts or older browsers
         const textArea = document.createElement('textarea');
@@ -190,16 +192,16 @@ export default function DebateDetailPage() {
         textArea.select();
         try {
           document.execCommand('copy');
-          if (showToast) toast.success(t('common.copySuccess'));
+          if (shouldShowToast) showToast(t('common.copySuccess'), 'success');
         } catch (err) {
           console.error('Fallback copy failed', err);
-          if (showToast) toast.error(t('common.copyFailed'));
+          if (shouldShowToast) showToast(t('common.copyFailed'), 'error');
         }
         document.body.removeChild(textArea);
       }
     } catch (err) {
       console.error('Copy failed', err);
-      if (showToast) toast.error(t('common.copyFailed'));
+      if (shouldShowToast) showToast(t('common.copyFailed'), 'error');
     }
   };
 

@@ -11,23 +11,30 @@ export class DebateService {
   static async recoverRunningDebates() {
       console.log('[DebateService] Checking for interrupted debates...');
       try {
+          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+          
           const { data: runningDebates, error } = await supabase
               .from('agent_debates')
               .select('*')
-              .eq('status', 'running');
+              .eq('status', 'running')
+              .lt('last_heartbeat_at', fiveMinutesAgo); // Only rescue if no heartbeat for 5 minutes
           
           if (error) throw error;
           
           if (runningDebates && runningDebates.length > 0) {
-              console.log(`[DebateService] Found ${runningDebates.length} interrupted debates. Resuming...`);
+              console.log(`[DebateService] Found ${runningDebates.length} stalled debates. Rescuing...`);
               for (const debate of runningDebates) {
+                  // Double check if it's already being handled in this instance
                   if (!activeDebates.has(debate.id)) {
                       activeDebates.set(debate.id, { status: 'running' });
-                      this.runDebateLoop(debate).catch(err => console.error(`[DebateService] Failed to resume debate ${debate.id}:`, err));
+                      this.runDebateLoop(debate).catch(err => {
+                          console.error(`[DebateService] Failed to resume debate ${debate.id}:`, err);
+                          activeDebates.delete(debate.id);
+                      });
                   }
               }
           } else {
-              console.log('[DebateService] No interrupted debates found.');
+              console.log('[DebateService] No stalled debates found.');
           }
       } catch (err) {
           console.error('[DebateService] Recovery failed:', err);
@@ -142,9 +149,12 @@ export class DebateService {
       // We run a loop, but we must check execution time to avoid hard kill.
       // Assuming 60s max duration, we try to run for 40s then exit gracefully.
       const loopStart = Date.now();
-      const MAX_EXECUTION_TIME = 40 * 1000; 
+      const MAX_EXECUTION_TIME = 45 * 1000; // Increased slightly
 
       while (Date.now() - dbStartTime < durationMs) {
+        // --- Heartbeat ---
+        await supabase.from('agent_debates').update({ last_heartbeat_at: new Date().toISOString() }).eq('id', debate.id);
+
         // Safety check: if this specific execution is running too long, break and let Cron pick it up
         if (Date.now() - loopStart > MAX_EXECUTION_TIME) {
             console.log(`[DebateService] Pausing debate ${debate.id} to avoid Serverless timeout. Waiting for Cron rescue.`);
@@ -158,144 +168,160 @@ export class DebateService {
             if (currentStatus?.status !== 'running') break;
         }
 
-        let speaker: AgentProfile;
-        let isCriticTurn = false;
-        let orchestrationReason = "";
-        let orchestrationThought = "";
-        let orchestrationUsage = null;
-
-        if (round > 1 && round % CRITIC_INTERVAL === 0) {
-            isCriticTurn = true;
-            speaker = criticAgent;
-            orchestrationReason = "Scheduled critique phase.";
-            orchestrationThought = "It's time for a critical review.";
-        } else {
-            const decision = await DebateGenerator.determineNextSpeaker(debate, agents, debate.id, lastSpeakerIndex);
-            speaker = agents[decision.index];
-            lastSpeakerIndex = decision.index;
-            orchestrationReason = decision.reason;
-            orchestrationThought = decision.thought;
-            orchestrationUsage = decision._usage;
-        }
-
-        // --- EXPOSE ORCHESTRATION LOGIC ---
-        // Save the moderator's decision process as a system message
-        if (round > 1) { // Skip for the very first round if desired, or keep it
-            await DebateUtils.saveMessage(
-                debate.id,
-                'System',
-                'Orchestrator',
-                JSON.stringify({
-                    type: 'orchestration',
-                    target_speaker: speaker.name,
-                    reason: orchestrationReason,
-                    thought: orchestrationThought
-                }),
-                round,
-                orchestrationThought, // Also save thought in internal_monologue column for consistency
-                false,
-                orchestrationUsage?.promptTokens,
-                orchestrationUsage?.completionTokens
-            );
-        }
-
-        const { data: recentMsgs } = await supabase.from('debate_messages').select('agent_name, content').eq('debate_id', debate.id).order('created_at', { ascending: false }).limit(5);
-        const context = recentMsgs?.reverse().map(m => `${m.agent_name}: ${m.content}`).join('\n') || '';
-
-        let schemaInfo = "";
-        if (debate.enable_environment_awareness) {
-             const schemaSnapshot = await DebateTools.getSchemaSnapshot();
-             schemaInfo = `\n[ACTIVE ENVIRONMENT DATA]\nDB Tables: ${Object.keys(schemaSnapshot.database_tables).join(', ')}\n`;
-        }
-        
-        const fullContext = `${context}${schemaInfo}`;
-        
-        const elapsedTime = Date.now() - dbStartTime;
-        const timeLeftRatio = 1 - (elapsedTime / durationMs);
-
-        let dualStreamResponse = isCriticTurn 
-            ? await DebateGenerator.generateCriticEvaluation(debate, fullContext)
-            : await DebateGenerator.generateAgentSpeech(debate, speaker, fullContext, timeLeftRatio);
-        
-        let publicSpeech = "";
-        let internalMonologue = "";
+        // Each round gets its own try-catch to prevent entire debate termination on single LLM failure
         try {
-             const parsed = JSON.parse(DebateUtils.cleanJson(dualStreamResponse.content));
-             publicSpeech = parsed.public_speech || parsed.speech;
-             internalMonologue = parsed.internal_monologue || parsed.thought;
-        } catch (e) {
-            publicSpeech = dualStreamResponse.content;
-            internalMonologue = "Analysis failed or raw output.";
-        }
-        
-        await DebateUtils.saveMessage(
-            debate.id, 
-            speaker.name, 
-            speaker.role, 
-            publicSpeech, 
-            round, 
-            internalMonologue,
-            false,
-            dualStreamResponse.usage?.promptTokens,
-            dualStreamResponse.usage?.completionTokens
-        );
+            let speaker: AgentProfile;
+            let isCriticTurn = false;
+            let orchestrationReason = "";
+            let orchestrationThought = "";
+            let orchestrationUsage = null;
 
-        // --- REAL-TIME ALIGNMENT TRACKING ---
-        if (round % 2 === 0) { // Evaluate every 2 rounds to save tokens
-            const alignment = await DebateGenerator.evaluateAlignment(debate, fullContext);
+            if (round > 1 && round % CRITIC_INTERVAL === 0) {
+                isCriticTurn = true;
+                speaker = criticAgent;
+                orchestrationReason = "Scheduled critique phase.";
+                orchestrationThought = "It's time for a critical review.";
+            } else {
+                const decision = await DebateGenerator.determineNextSpeaker(debate, agents, debate.id, lastSpeakerIndex);
+                speaker = agents[decision.index];
+                lastSpeakerIndex = decision.index;
+                orchestrationReason = decision.reason;
+                orchestrationThought = decision.thought;
+                orchestrationUsage = decision._usage;
+            }
+
+            // --- EXPOSE ORCHESTRATION LOGIC ---
+            // Save the moderator's decision process as a system message
+            if (round > 1) { // Skip for the very first round if desired, or keep it
+                await DebateUtils.saveMessage(
+                    debate.id,
+                    'System',
+                    'Orchestrator',
+                    JSON.stringify({
+                        type: 'orchestration',
+                        target_speaker: speaker.name,
+                        reason: orchestrationReason,
+                        thought: orchestrationThought
+                    }),
+                    round,
+                    orchestrationThought, // Also save thought in internal_monologue column for consistency
+                    false,
+                    orchestrationUsage?.promptTokens,
+                    orchestrationUsage?.completionTokens
+                );
+            }
+
+            const { data: recentMsgs } = await supabase.from('debate_messages').select('agent_name, content').eq('debate_id', debate.id).order('created_at', { ascending: false }).limit(5);
+            const context = recentMsgs?.reverse().map(m => `${m.agent_name}: ${m.content}`).join('\n') || '';
+
+            let schemaInfo = "";
+            if (debate.enable_environment_awareness) {
+                 try {
+                    const schemaSnapshot = await DebateTools.getSchemaSnapshot();
+                    schemaInfo = `\n[ACTIVE ENVIRONMENT DATA]\nDB Tables: ${Object.keys(schemaSnapshot.database_tables).join(', ')}\n`;
+                 } catch (e) { console.warn('Environment awareness failed:', e); }
+            }
+            
+            const fullContext = `${context}${schemaInfo}`;
+            
+            const elapsedTime = Date.now() - dbStartTime;
+            const timeLeftRatio = 1 - (elapsedTime / durationMs);
+
+            let dualStreamResponse = isCriticTurn 
+                ? await DebateGenerator.generateCriticEvaluation(debate, fullContext)
+                : await DebateGenerator.generateAgentSpeech(debate, speaker, fullContext, timeLeftRatio);
+            
+            let publicSpeech = "";
+            let internalMonologue = "";
+            try {
+                 const parsed = JSON.parse(DebateUtils.cleanJson(dualStreamResponse.content));
+                 publicSpeech = parsed.public_speech || parsed.speech || parsed.content;
+                 internalMonologue = parsed.internal_monologue || parsed.thought || parsed.analysis;
+            } catch (e) {
+                publicSpeech = dualStreamResponse.content;
+                internalMonologue = "Analysis failed or raw output.";
+            }
+            
             await DebateUtils.saveMessage(
-                debate.id,
-                'System',
-                'Moderator',
-                JSON.stringify({
-                    type: 'alignment',
-                    score: alignment.score,
-                    status: alignment.status,
-                    reason: alignment.reason
-                }),
-                round,
-                undefined,
-                false
+                debate.id, 
+                speaker.name, 
+                speaker.role, 
+                publicSpeech, 
+                round, 
+                internalMonologue,
+                false,
+                dualStreamResponse.usage?.promptTokens,
+                dualStreamResponse.usage?.completionTokens
             );
-        }
 
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        round++;
+            // --- REAL-TIME ALIGNMENT TRACKING ---
+            if (round % 2 === 0) { // Evaluate every 2 rounds to save tokens
+                try {
+                    const alignment = await DebateGenerator.evaluateAlignment(debate, fullContext);
+                    await DebateUtils.saveMessage(
+                        debate.id,
+                        'System',
+                        'Moderator',
+                        JSON.stringify({
+                            type: 'alignment',
+                            score: alignment.score,
+                            status: alignment.status,
+                            reason: alignment.reason
+                        }),
+                        round,
+                        undefined,
+                        false
+                    );
+                } catch (e) { console.warn('Alignment evaluation failed:', e); }
+            }
+
+            // Shorter wait time to maximize serverless throughput
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            round++;
+        } catch (roundError) {
+            console.error(`[DebateService] Round ${round} error in debate ${debate.id}:`, roundError);
+            // Log error but don't terminate the whole debate
+            await DebateUtils.saveMessage(debate.id, 'System', 'Error', `Round ${round} encountered a temporary issue. Retrying in next cycle.`, round);
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait a bit longer on error
+            round++;
+        }
       }
 
+      const isTimeUp = Date.now() - dbStartTime >= durationMs;
       const finalControl = activeDebates.get(debate.id);
-      if (finalControl && finalControl.status === 'running') {
-        // Step 1: Generate Structure Result
-        const structuredResult = await DebateGenerator.generateStructuredResult(debate);
-        
-        // Step 2: Generate Summary (Legacy support, can be derived from structured result)
-        const summary = structuredResult.summary_markdown;
+      
+      if (isTimeUp && finalControl && finalControl.status === 'running') {
+        try {
+            // Step 1: Generate Structure Result
+            const structuredResult = await DebateGenerator.generateStructuredResult(debate);
+            
+            // Step 2: Generate Summary (Legacy support, can be derived from structured result)
+            const summary = structuredResult.summary_markdown;
 
-        await supabase.from('agent_debates').update({ 
-            status: 'completed', 
-            ended_at: new Date().toISOString(),
-            summary: summary,
-            // Assuming we will add a column for structured result later or store in a separate table
-            // For now, let's just log it or store in summary if schema allows JSON
-        }).eq('id', debate.id);
-        
-        // Store structured result in a dedicated table if exists (TODO)
-        // await supabase.from('debate_results').insert({ debate_id: debate.id, ...structuredResult });
-
-        await DebateUtils.saveMessage(
-            debate.id, 
-            'System', 
-            'Judge', 
-            `**Summary Report**\n\n${summary}`, 
-            999, 
-            JSON.stringify(structuredResult), 
-            true,
-            structuredResult._usage?.promptTokens,
-            structuredResult._usage?.completionTokens
-        );
+            await supabase.from('agent_debates').update({ 
+                status: 'completed', 
+                ended_at: new Date().toISOString(),
+                summary: summary,
+            }).eq('id', debate.id);
+            
+            await DebateUtils.saveMessage(
+                debate.id, 
+                'System', 
+                'Judge', 
+                `**Summary Report**\n\n${summary}`, 
+                999, 
+                JSON.stringify(structuredResult), 
+                true,
+                structuredResult._usage?.promptTokens,
+                structuredResult._usage?.completionTokens
+            );
+        } catch (sumError) {
+            console.error(`[DebateService] Summary generation failed for ${debate.id}:`, sumError);
+            await supabase.from('agent_debates').update({ status: 'completed', summary: 'Manual summary required due to error.' }).eq('id', debate.id);
+        }
       }
     } catch (error) {
-      console.error(`Debate ${debate.id} error:`, error);
+      console.error(`Debate ${debate.id} critical error:`, error);
       await supabase.from('agent_debates').update({ status: 'error', error_message: String(error) }).eq('id', debate.id);
     } finally {
       activeDebates.delete(debate.id);

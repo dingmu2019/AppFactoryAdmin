@@ -34,6 +34,7 @@ export const zh = {
     "goHome": "回首页",
     "optional": "可选",
     "infinity": "∞",
+    "minutes": "分钟",
     "createFailed": "创建失败",
     "logout": "退出登录",
     "searchAnything": "搜索任何内容...",

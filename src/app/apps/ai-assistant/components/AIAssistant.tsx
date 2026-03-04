@@ -362,6 +362,44 @@ export const AIAssistant: React.FC = () => {
                     margin: 20px 0; 
                   }
                   .markdown-body img { max-width: 100%; height: auto; border-radius: 12px; margin: 16px 0; }
+                  
+                  /* System2 深度思考优化样式 */
+                  .markdown-body div[class*="border-l-2"] {
+                    border-left-color: #6366f1 !important;
+                    margin-bottom: 24px !important;
+                  }
+                  .markdown-body div[class*="bg-zinc-50"] {
+                    background-color: #f8fafc !important;
+                    border: 1px solid #e2e8f0 !important;
+                    border-left: 4px solid #6366f1 !important;
+                    border-radius: 12px !important;
+                    padding: 16px 20px !important;
+                    color: #64748b !important;
+                    font-style: italic !important;
+                    font-size: 13px !important;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
+                  }
+                  .markdown-body button {
+                    color: #6366f1 !important;
+                    font-weight: 800 !important;
+                    font-size: 11px !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.05em !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 8px !important;
+                    margin-bottom: 8px !important;
+                    border: none !important;
+                    background: none !important;
+                    padding: 0 !important;
+                  }
+                  .markdown-body button div {
+                    width: 6px !important;
+                    height: 6px !important;
+                    background-color: #6366f1 !important;
+                    border-radius: 50% !important;
+                  }
+
                   .mermaid-container { 
                     text-align: center; 
                     margin: 30px 0; 

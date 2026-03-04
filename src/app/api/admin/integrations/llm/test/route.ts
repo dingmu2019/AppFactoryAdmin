@@ -52,8 +52,8 @@ export async function POST(req: NextRequest) {
 
     const response = await provider.chat({
       messages: [{ role: 'user', content: '你好，你是谁？' }],
-      temperature: 0.7,
-      maxTokens: 100
+      temperature: typeof config.temperature === 'number' ? config.temperature : 0.7,
+      maxTokens: typeof config.maxTokens === 'number' ? config.maxTokens : 100
     });
 
     return NextResponse.json({ success: true, message: response.content });

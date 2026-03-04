@@ -34,6 +34,7 @@ export const en = {
     "goHome": "Go Home",
     "optional": "Optional",
     "infinity": "∞",
+    "minutes": "minutes",
     "createFailed": "Create failed",
     "logout": "Logout",
     "searchAnything": "Search anything...",

@@ -16,6 +16,7 @@ import {
 import { useI18n, useToast, usePageHeader } from '@/contexts';
 import { authenticatedFetch, safeResponseJson } from '@/lib/http';
 import { ConfirmModal } from '@/components/ConfirmModal';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type Debate = {
   id: string;
@@ -316,122 +317,193 @@ export default function AIDebatesPage() {
       />
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-lg border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-              <div className="font-bold text-zinc-900 dark:text-white">{t('common.ai.debatesPage.create')}</div>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-600 rounded-lg text-white">
+                  <Plus size={20} />
+                </div>
+                <div className="font-bold text-lg text-zinc-900 dark:text-white tracking-tight">{t('common.ai.debatesPage.create')}</div>
+              </div>
               <button
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all"
                 onClick={() => setShowCreateModal(false)}
               >
-                ✕
+                <Plus size={20} className="rotate-45" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t('common.ai.debatesPage.topic')}</label>
-                <input
-                  className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950"
+            <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  {t('common.ai.debatesPage.topic')}
+                </label>
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none text-sm leading-relaxed"
+                  rows={2}
                   value={newTopic}
                   onChange={e => setNewTopic(e.target.value)}
                   placeholder={t('common.ai.debatesPage.topicPlaceholder')}
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t('common.ai.debatesPage.mode')}</label>
-                  <select
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950"
-                    value={newMode}
-                    onChange={e => setNewMode(e.target.value as any)}
-                  >
-                    <option value="free_discussion">{t('common.ai.debatesPage.free')}</option>
-                    <option value="debate">{t('common.ai.debatesPage.debate')}</option>
-                  </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
+                    <MessageSquare size={14} className="text-indigo-500" />
+                    {t('common.ai.debatesPage.mode')}
+                  </label>
+                  <Tabs value={newMode} onValueChange={(v) => setNewMode(v as any)} className="w-full">
+                    <TabsList className="w-full grid grid-cols-2 bg-zinc-100 dark:bg-zinc-800/50 p-1 h-11">
+                      <TabsTrigger value="free_discussion" className="data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-sm transition-all duration-200">
+                        {t('common.ai.debatesPage.free')}
+                      </TabsTrigger>
+                      <TabsTrigger value="debate" className="data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-sm transition-all duration-200">
+                        {t('common.ai.debatesPage.debate')}
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t('common.ai.debatesPage.scrollMode')}</label>
-                  <select
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950"
-                    value={newScrollMode}
-                    onChange={e => setNewScrollMode(e.target.value as any)}
-                  >
-                    <option value="auto">{t('common.ai.debatesPage.scrollAuto')}</option>
-                    <option value="manual">{t('common.ai.debatesPage.scrollManual')}</option>
-                  </select>
+                <div className="space-y-3">
+                  <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
+                    <RefreshCw size={14} className="text-indigo-500" />
+                    {t('common.ai.debatesPage.scrollMode')}
+                  </label>
+                  <Tabs value={newScrollMode} onValueChange={(v) => setNewScrollMode(v as any)} className="w-full">
+                    <TabsList className="w-full grid grid-cols-2 bg-zinc-100 dark:bg-zinc-800/50 p-1 h-11">
+                      <TabsTrigger value="auto" className="data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-sm transition-all duration-200">
+                        {t('common.ai.debatesPage.scrollAuto')}
+                      </TabsTrigger>
+                      <TabsTrigger value="manual" className="data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-700 data-[state=active]:shadow-sm transition-all duration-200">
+                        {t('common.ai.debatesPage.scrollManual')}
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t('common.ai.debatesPage.duration')}</label>
+              <div className="grid grid-cols-1 gap-6 pt-2">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
+                      <Clock size={14} className="text-indigo-500" />
+                      {t('common.ai.debatesPage.duration')}
+                    </label>
+                    <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold border border-indigo-100 dark:border-indigo-800/50">
+                      {newDuration} {t('common.ai.debatesPage.detail.minutes')}
+                    </span>
+                  </div>
                   <input
-                    type="number"
+                    type="range"
                     min={1}
-                    max={180}
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950"
+                    max={30}
+                    step={1}
+                    className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                     value={newDuration}
                     onChange={e => setNewDuration(Number(e.target.value))}
                   />
+                  <div className="flex justify-between text-[10px] text-zinc-400 font-medium px-1">
+                    <span>1m</span>
+                    <span>10m</span>
+                    <span>20m</span>
+                    <span>30m</span>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t('common.ai.debatesPage.entropy')}</label>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
+                      <Zap size={14} className="text-indigo-500" />
+                      {t('common.ai.debatesPage.entropy')}
+                    </label>
+                    <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold border border-indigo-100 dark:border-indigo-800/50">
+                      {newEntropy.toFixed(1)}
+                    </span>
+                  </div>
                   <input
-                    type="number"
+                    type="range"
                     min={0}
                     max={1}
                     step={0.1}
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950"
+                    className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                     value={newEntropy}
                     onChange={e => setNewEntropy(Number(e.target.value))}
                   />
-                  <div className="text-xs text-zinc-500">{t('common.ai.debatesPage.entropyDesc')}</div>
+                  <div className="flex justify-between text-[10px] text-zinc-400 font-medium px-1">
+                    <span>0.0 (Stable)</span>
+                    <span>0.5</span>
+                    <span>1.0 (Creative)</span>
+                  </div>
+                  <div className="text-[11px] text-zinc-500 bg-zinc-50 dark:bg-zinc-800/30 p-2 rounded border border-zinc-100 dark:border-zinc-800/50">
+                    {t('common.ai.debatesPage.entropyDesc')}
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t('common.ai.debatesPage.detail.participants')}</label>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
+                      <Users size={14} className="text-indigo-500" />
+                      {t('common.ai.debatesPage.detail.participants')}
+                    </label>
+                    <span className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold border border-indigo-100 dark:border-indigo-800/50">
+                      {newParticipantsCount}
+                    </span>
+                  </div>
                   <input
-                    type="number"
+                    type="range"
                     min={2}
                     max={12}
-                    className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950"
+                    step={1}
+                    className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                     value={newParticipantsCount}
                     onChange={e => setNewParticipantsCount(Number(e.target.value))}
                   />
+                  <div className="flex justify-between text-[10px] text-zinc-400 font-medium px-1">
+                    <span>2</span>
+                    <span>4</span>
+                    <span>6</span>
+                    <span>8</span>
+                    <span>10</span>
+                    <span>12</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 px-4 py-3">
-                <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
-                  <div>
-                    <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t('common.ai.debatesPage.awarenessTitle')}</div>
-                    <div className="text-xs text-zinc-400 mt-0.5">{t('common.ai.debatesPage.awarenessDesc')}</div>
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/20 px-5 py-4 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                <label className="flex items-center justify-between gap-4 cursor-pointer group">
+                  <div className="flex-1">
+                    <div className="text-sm font-bold text-zinc-800 dark:text-zinc-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{t('common.ai.debatesPage.awarenessTitle')}</div>
+                    <div className="text-xs text-zinc-500 mt-1 leading-relaxed">{t('common.ai.debatesPage.awarenessDesc')}</div>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={enableAwareness}
-                    onChange={e => setEnableAwareness(e.target.checked)}
-                    className="h-4 w-4 accent-indigo-600"
-                  />
+                  <div className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={enableAwareness}
+                      onChange={e => setEnableAwareness(e.target.checked)}
+                    />
+                    <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </div>
                 </label>
               </div>
             </div>
 
-            <div className="px-5 py-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-end gap-3">
+            <div className="px-6 py-5 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-end gap-4 bg-zinc-50/50 dark:bg-zinc-900/50">
               <button
-                className="px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                className="px-5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800 transition-all font-medium text-sm"
                 onClick={() => setShowCreateModal(false)}
               >
                 {t('common.ai.debatesPage.cancel')}
               </button>
               <button
-                className={`px-4 py-2 rounded-lg text-white inline-flex items-center gap-2 ${newTopic.trim() ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-zinc-400 cursor-not-allowed'}`}
+                className={`px-6 py-2.5 rounded-xl text-white inline-flex items-center gap-2 font-bold text-sm shadow-lg transition-all ${newTopic.trim() ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20 active:scale-95' : 'bg-zinc-400 cursor-not-allowed'}`}
                 onClick={handleCreate}
                 disabled={!newTopic.trim() || isCreating}
               >
-                <Play size={16} />
+                {isCreating ? <RefreshCw size={16} className="animate-spin" /> : <Play size={16} />}
                 {isCreating ? t('common.processing') : t('common.ai.debatesPage.start')}
               </button>
             </div>

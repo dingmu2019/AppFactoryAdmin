@@ -209,7 +209,25 @@ export const LLMConfigForm: React.FC<Props> = ({ configs, onSave, onDelete, onTe
   };
 
   const handleChange = (field: keyof LLMConfig, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+      
+      // Auto-adjust temperature for reasoning models (o1, kimi-k2.5, r1, reasoner, etc.)
+      if (field === 'model' && typeof value === 'string') {
+          const modelName = value.toLowerCase();
+          const isReasoning = 
+              modelName.includes('o1') || 
+              modelName.includes('k2.5') || 
+              modelName.includes('reasoner') || 
+              modelName.includes('r1');
+          
+          if (isReasoning) {
+              next.temperature = 1;
+          }
+      }
+      
+      return next;
+    });
   };
 
   const isAzure = formData.provider === 'azure';

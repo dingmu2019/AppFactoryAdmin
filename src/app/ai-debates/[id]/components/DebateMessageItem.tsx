@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, Copy, Camera, Download, Check } from 'lucide-react';
+import { User, Copy, Camera, Download, Check, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Tooltip } from "@/components/Tooltip";
@@ -30,7 +30,17 @@ export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
 }) => {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const isSystem = msg.agent_name === 'System';
+
+  const handleScreenshot = async () => {
+    setIsCapturing(true);
+    try {
+        await onScreenshot(`message-${msg.id}`);
+    } finally {
+        setIsCapturing(false);
+    }
+  };
   
   // Try to parse content as JSON (internal_monologue + public_speech)
   let content = msg.content;
@@ -108,12 +118,20 @@ export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
                 </button>
               </Tooltip>
               <Tooltip content={t('common.ai.assistant.screenshot')}>
-                <button onClick={() => onScreenshot(`message-${msg.id}`)} className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
-                  <Camera size={14} />
+                <button 
+                  onClick={handleScreenshot} 
+                  disabled={isCapturing}
+                  className={`p-1.5 rounded-lg transition-all ${
+                    isCapturing 
+                      ? 'text-indigo-600 bg-zinc-100 dark:bg-zinc-800' 
+                      : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  {isCapturing ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
                 </button>
               </Tooltip>
               <Tooltip content={t('common.ai.assistant.exportPDF')}>
-                <button onClick={() => onExportPDF({ ...msg, content })} className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
+                <button onClick={() => onExportPDF(msg)} className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
                   <Download size={14} />
                 </button>
               </Tooltip>

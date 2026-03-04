@@ -34,10 +34,17 @@ export class OpenAIProvider implements AIProvider {
       });
     }
     
+    const modelName = (this.config.model || '').toLowerCase();
+    const isReasoningModel = 
+      modelName.includes('o1') || 
+      modelName.includes('k2.5') || 
+      modelName.includes('reasoner') || 
+      modelName.includes('r1');
+
     const payload: any = {
       model: this.config.model,
       messages: messages,
-      temperature: request.temperature ?? 0.7,
+      temperature: isReasoningModel ? 1 : (request.temperature ?? 0.7),
       max_tokens: request.maxTokens,
     };
 
