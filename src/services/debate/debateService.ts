@@ -135,22 +135,32 @@ export class DebateService {
         const elapsedTime = Date.now() - startTime;
         const timeLeftRatio = 1 - (elapsedTime / durationMs);
 
-        let dualStreamContent = isCriticTurn 
+        let dualStreamResponse = isCriticTurn 
             ? await DebateGenerator.generateCriticEvaluation(debate, fullContext)
             : await DebateGenerator.generateAgentSpeech(debate, speaker, fullContext, timeLeftRatio);
         
         let publicSpeech = "";
         let internalMonologue = "";
         try {
-             const parsed = JSON.parse(DebateUtils.cleanJson(dualStreamContent));
+             const parsed = JSON.parse(DebateUtils.cleanJson(dualStreamResponse.content));
              publicSpeech = parsed.public_speech || parsed.speech;
              internalMonologue = parsed.internal_monologue || parsed.thought;
         } catch (e) {
-            publicSpeech = dualStreamContent;
+            publicSpeech = dualStreamResponse.content;
             internalMonologue = "Analysis failed or raw output.";
         }
         
-        await DebateUtils.saveMessage(debate.id, speaker.name, speaker.role, publicSpeech, round, internalMonologue);
+        await DebateUtils.saveMessage(
+            debate.id, 
+            speaker.name, 
+            speaker.role, 
+            publicSpeech, 
+            round, 
+            internalMonologue,
+            false,
+            dualStreamResponse.usage?.promptTokens,
+            dualStreamResponse.usage?.completionTokens
+        );
         await new Promise(resolve => setTimeout(resolve, 5000));
         round++;
       }
@@ -174,7 +184,17 @@ export class DebateService {
         // Store structured result in a dedicated table if exists (TODO)
         // await supabase.from('debate_results').insert({ debate_id: debate.id, ...structuredResult });
 
-        await DebateUtils.saveMessage(debate.id, 'System', 'Judge', `**Summary Report**\n\n${summary}`, 999, JSON.stringify(structuredResult), true);
+        await DebateUtils.saveMessage(
+            debate.id, 
+            'System', 
+            'Judge', 
+            `**Summary Report**\n\n${summary}`, 
+            999, 
+            JSON.stringify(structuredResult), 
+            true,
+            structuredResult._usage?.promptTokens,
+            structuredResult._usage?.completionTokens
+        );
       }
     } catch (error) {
       console.error(`Debate ${debate.id} error:`, error);

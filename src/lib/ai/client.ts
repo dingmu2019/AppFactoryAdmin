@@ -7,7 +7,7 @@ export type ChatMessage = {
   name?: string;
 };
 
-export async function callLLM(messages: ChatMessage[], systemPrompt?: string, agentId?: string) {
+export async function callLLM(messages: ChatMessage[], systemPrompt?: string, agentId?: string): Promise<{ content: string, usage?: any }> {
   const res = await authenticatedFetch('/api/ai/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -20,5 +20,8 @@ export async function callLLM(messages: ChatMessage[], systemPrompt?: string, ag
   }
 
   const data = await res.json();
-  return data.content;
+  return {
+    content: data.content,
+    usage: data.usage
+  };
 }

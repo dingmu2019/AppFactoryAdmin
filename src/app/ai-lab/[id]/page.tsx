@@ -20,6 +20,8 @@ interface LabMessage {
   };
   round_index: number;
   created_at: string;
+  prompt_tokens?: number;
+  completion_tokens?: number;
 }
 
 interface LabArtifact {
@@ -245,6 +247,24 @@ export default function AILabDetailPage() {
                                       {msg.content.speech}
                                   </ReactMarkdown>
                               </div>
+
+                              {/* Token Usage Display */}
+                              {(msg.prompt_tokens || msg.completion_tokens) ? (
+                                <div className="mt-3 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex gap-3 text-[10px] text-zinc-400 font-medium opacity-50 hover:opacity-100 transition-opacity">
+                                  <div className="flex items-center gap-1">
+                                    <span>Input:</span>
+                                    <span className="text-zinc-600 dark:text-zinc-300">{msg.prompt_tokens || 0}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <span>Output:</span>
+                                    <span className="text-zinc-600 dark:text-zinc-300">{msg.completion_tokens || 0}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <span>Total:</span>
+                                    <span className="text-indigo-500 font-bold">{(msg.prompt_tokens || 0) + (msg.completion_tokens || 0)}</span>
+                                  </div>
+                                </div>
+                              ) : null}
                           </div>
                       </div>
                   ))}

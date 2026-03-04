@@ -99,7 +99,8 @@ export class AILabService {
 
         // --- 主持人循环 (Moderator Loop) ---
         // 基于上下文和熵动态决定下一个发言者
-        const nextSpeakerIndex = await this.determineNextSpeaker(session, agents, history, lastSpeakerIndex);
+        const nextSpeakerResult = await this.determineNextSpeaker(session, agents, history, lastSpeakerIndex);
+        const nextSpeakerIndex = nextSpeakerResult.index;
         const speaker = agents[nextSpeakerIndex];
         lastSpeakerIndex = nextSpeakerIndex;
         // ---------------------------------------------
@@ -110,17 +111,25 @@ export class AILabService {
         // ---------------------------------------------
 
         // 保存消息
-        await this.saveMessage(sessionId, speaker.name, speaker.role, response, round);
+        await this.saveMessage(
+            sessionId, 
+            speaker.name, 
+            speaker.role, 
+            response.content, 
+            round, 
+            response.usage?.promptTokens, 
+            response.usage?.completionTokens
+        );
 
         // --- 评论家循环 (Critic Loop) ---
         // 评估发言质量
-        const criticResult = await this.evaluateSpeech(session, speaker, response, history);
+        const criticResult = await this.evaluateSpeech(session, speaker, response.content, history);
         
         if (!criticResult.pass) {
           await this.saveMessage(sessionId, 'System', 'Critic', {
             thought: `质量检查未通过。得分: ${criticResult.score}/10。原因: ${criticResult.reason}`,
             speech: `(自动修正) 刚才的发言存在逻辑漏洞：${criticResult.reason}。请重新思考并修正您的观点。`
-          }, round);
+          }, round, criticResult._usage?.promptTokens, criticResult._usage?.completionTokens);
           // 在下一次迭代中，主持人可能会选择同一发言者或挑战者来解决这个问题
         }
         // ---------------------------------------------
@@ -157,9 +166,9 @@ export class AILabService {
   /**
    * 决定下一个发言者
    */
-  private static async determineNextSpeaker(session: any, agents: LabAgentProfile[], history: string, lastSpeakerIdx: number): Promise<number> {
+  private static async determineNextSpeaker(session: any, agents: LabAgentProfile[], history: string, lastSpeakerIdx: number): Promise<{ index: number, _usage?: any }> {
     // 如果是第一轮，直接选择第一个代理
-    if (lastSpeakerIdx === -1) return 0;
+    if (lastSpeakerIdx === -1) return { index: 0 };
 
     const prompt = `
       你是“主持人”（游戏管理员）。
@@ -185,20 +194,21 @@ export class AILabService {
     `;
 
     try {
-      const jsonStr = await this.callLLM(prompt);
-      const result = JSON.parse(this.cleanJson(jsonStr));
+      const response = await this.callLLM(prompt);
+      const result = JSON.parse(this.cleanJson(response.content));
       const idx = result.next_speaker_index;
-      return (typeof idx === 'number' && idx >= 0 && idx < agents.length) ? idx : (lastSpeakerIdx + 1) % agents.length;
+      const finalIndex = (typeof idx === 'number' && idx >= 0 && idx < agents.length) ? idx : (lastSpeakerIdx + 1) % agents.length;
+      return { index: finalIndex, _usage: response.usage };
     } catch (e) {
       // 如果 LLM 失败，回退到轮询
-      return (lastSpeakerIdx + 1) % agents.length;
+      return { index: (lastSpeakerIdx + 1) % agents.length };
     }
   }
 
   /**
    * 评估发言质量
    */
-  private static async evaluateSpeech(session: any, speaker: LabAgentProfile, speech: any, history: string): Promise<{ pass: boolean; score: number; reason: string }> {
+  private static async evaluateSpeech(session: any, speaker: LabAgentProfile, speech: any, history: string): Promise<{ pass: boolean; score: number; reason: string; _usage?: any }> {
     const prompt = `
       你是“评论家”（系统2监督者）。
       评估来自 ${speaker.name} (${speaker.role}) 的最后一条消息。
@@ -220,8 +230,9 @@ export class AILabService {
     `;
     
     try {
-      const jsonStr = await this.callLLM(prompt);
-      return JSON.parse(this.cleanJson(jsonStr));
+      const response = await this.callLLM(prompt);
+      const result = JSON.parse(this.cleanJson(response.content));
+      return { ...result, _usage: response.usage };
     } catch (e) {
       console.error("Critic Evaluation Failed", e);
       return { pass: true, score: 5, reason: "Evaluation failed, proceeding." }; // 失败时默认通过
@@ -244,14 +255,14 @@ export class AILabService {
       返回 JSON 数组: [{ "name": "...", "role": "...", "stance": "...", "avatar": "emoji" }]
       重要: "role" 和 "stance" 的值必须是简体中文。
     `;
-    const jsonStr = await this.callLLM(prompt);
-    return JSON.parse(this.cleanJson(jsonStr));
+    const response = await this.callLLM(prompt);
+    return JSON.parse(this.cleanJson(response.content));
   }
 
   /**
    * 生成实验室发言
    */
-  private static async generateLabSpeech(session: any, speaker: LabAgentProfile, history: string): Promise<any> {
+  private static async generateLabSpeech(session: any, speaker: LabAgentProfile, history: string): Promise<{ content: any, usage?: any }> {
     const contextStr = JSON.stringify(session.context_snapshot);
     
     const systemPrompt = `
@@ -280,11 +291,17 @@ export class AILabService {
       轮到你了。请发言。
     `;
 
-    const jsonStr = await this.callLLM(userPrompt, systemPrompt);
+    const response = await this.callLLM(userPrompt, systemPrompt);
     try {
-      return JSON.parse(this.cleanJson(jsonStr));
+      return {
+          content: JSON.parse(this.cleanJson(response.content)),
+          usage: response.usage
+      };
     } catch (e) {
-      return { thought: "Error parsing thought", speech: jsonStr };
+      return {
+          content: { thought: "Error parsing thought", speech: response.content },
+          usage: response.usage
+      };
     }
   }
 
@@ -348,7 +365,8 @@ export class AILabService {
       重要: 用简体中文输出。`;
     }
 
-    const content = await this.callLLM(prompt);
+    const response = await this.callLLM(prompt);
+    const content = response.content;
 
     // 保存工件
     await supabase.from('ai_lab_artifacts').insert({
@@ -356,14 +374,14 @@ export class AILabService {
       type: artifactType,
       title: `${session.title} - Output`,
       content: content,
-      version: 1
+      version: 1,
     });
 
     // 在聊天中通知
     await this.saveMessage(session.id, 'System', 'ArtifactGenerator', {
       thought: 'Compiling final results...',
       speech: `工件生成完成: ${session.title} - Output`
-    }, 100);
+    }, 100, response.usage?.promptTokens, response.usage?.completionTokens);
   }
 
   /**
@@ -385,13 +403,23 @@ export class AILabService {
   /**
    * 保存消息
    */
-  private static async saveMessage(sessionId: string, name: string, role: string, content: any, round: number) {
+  private static async saveMessage(
+    sessionId: string, 
+    name: string, 
+    role: string, 
+    content: any, 
+    round: number,
+    promptTokens: number = 0,
+    completionTokens: number = 0
+  ) {
     await supabase.from('ai_lab_messages').insert({
       session_id: sessionId,
       agent_name: name,
       agent_role: role,
       content: content, // JSONB
-      round_index: round
+      round_index: round,
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens
     });
   }
 
@@ -449,7 +477,7 @@ export class AILabService {
   /**
    * 调用 LLM 服务
    */
-  private static async callLLM(userPrompt: string, systemPrompt?: string): Promise<string> {
+  private static async callLLM(userPrompt: string, systemPrompt?: string): Promise<{ content: string, usage?: any }> {
     // 默认使用 localhost:3000 (Next.js 默认端口) 或环境变量
     const port = process.env.PORT || 3000;
     // 在部署环境下，优先使用真实的外部 URL，否则 AI Lab 可能无法调通内部 API
@@ -485,7 +513,10 @@ export class AILabService {
         if (!data.content) {
           throw new Error('AI Chat API returned empty content');
         }
-        return data.content;
+        return {
+            content: data.content,
+            usage: data.usage
+        };
 
       } catch (e: any) {
         lastError = e;

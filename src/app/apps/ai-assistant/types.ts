@@ -31,4 +31,6 @@ export type Message = {
   timestamp: number;
   attachments?: Attachment[];
   feedback?: 'like' | 'dislike';
+  prompt_tokens?: number;
+  completion_tokens?: number;
 };

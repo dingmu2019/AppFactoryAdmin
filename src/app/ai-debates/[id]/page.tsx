@@ -27,7 +27,7 @@ export default function DebateDetailPage() {
   const [isStopping, setIsStopping] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [expandedThinking, setExpandedThinking] = useState<Record<string, boolean>>({});
-  const [showThinking, setShowThinking] = useState(false);
+  const [showThinking, setShowThinking] = useState(true);
   const [viewMode, setViewMode] = useState<'result' | 'timeline'>('timeline');
   const [focusAgent, setFocusAgent] = useState('__all__');
   const [confirmModal, setConfirmModal] = useState<{

@@ -25,8 +25,8 @@ export class DebateGenerator {
       
       CRITICAL: Ensure the JSON is valid and does not contain any trailing characters or comments.
     `;
-    const jsonStr = await DebateUtils.callInternalLLM([{ role: 'user', content: prompt }]);
-    const cleanJson = DebateUtils.cleanJson(jsonStr);
+    const result = await DebateUtils.callInternalLLM([{ role: 'user', content: prompt }]);
+    const cleanJson = DebateUtils.cleanJson(result.content);
     return JSON.parse(cleanJson);
   }
 
@@ -54,9 +54,9 @@ export class DebateGenerator {
         Return JSON: {"next_speaker_index": 0, "reason": "..."}
     `;
     try {
-        const jsonStr = await DebateUtils.callInternalLLM([{ role: 'user', content: prompt }]);
-        const result = JSON.parse(DebateUtils.cleanJson(jsonStr));
-        const idx = result.next_speaker_index;
+        const result = await DebateUtils.callInternalLLM([{ role: 'user', content: prompt }]);
+        const jsonResult = JSON.parse(DebateUtils.cleanJson(result.content));
+        const idx = jsonResult.next_speaker_index;
         if (typeof idx === 'number' && idx >= 0 && idx < agents.length) return idx;
         return (lastSpeakerIdx + 1) % agents.length;
     } catch (e) {
@@ -64,7 +64,7 @@ export class DebateGenerator {
     }
   }
 
-  static async generateCriticEvaluation(debate: any, context: string): Promise<string> {
+  static async generateCriticEvaluation(debate: any, context: string): Promise<{ content: string, usage?: any }> {
     const systemPrompt = `
       You are Hassabis, an Adversarial Critic and Senior Architect.
       Topic: "${debate.topic}"
@@ -85,7 +85,7 @@ export class DebateGenerator {
     return await DebateUtils.callInternalLLM([{ role: 'user', content: 'Evaluate the debate progress now.' }], systemPrompt);
   }
 
-  static async generateAgentSpeech(debate: any, speaker: AgentProfile, context: string, timeLeftRatio?: number): Promise<string> {
+  static async generateAgentSpeech(debate: any, speaker: AgentProfile, context: string, timeLeftRatio?: number): Promise<{ content: string, usage?: any }> {
     // 1. Retrieve Long-term Memory
     const longTermMemory = await MemoryService.retrieveRelevantMemories(debate.topic, debate.id);
     const memoryContext = longTermMemory ? `\n[LONG-TERM MEMORY (Insights from past debates)]:\n${longTermMemory}\n` : '';
@@ -133,9 +133,9 @@ export class DebateGenerator {
     if (enableReflexion) {
         // Step 1: Draft
         const draftPrompt = `${baseSystemPrompt}\nOutput strictly JSON draft:\n{"internal_monologue": "...", "public_speech": "..."}`;
-        const draftRaw = await DebateUtils.callInternalLLM([{ role: 'user', content: 'Draft your response.' }], draftPrompt);
+        const draftResult = await DebateUtils.callInternalLLM([{ role: 'user', content: 'Draft your response.' }], draftPrompt);
         let draft = { internal_monologue: "", public_speech: "" };
-        try { draft = JSON.parse(DebateUtils.cleanJson(draftRaw)); } catch (e) {}
+        try { draft = JSON.parse(DebateUtils.cleanJson(draftResult.content)); } catch (e) {}
 
         // Step 2: Critique (Self-Correction)
         const critiquePrompt = `
@@ -149,14 +149,14 @@ export class DebateGenerator {
             
             Output concise critique in 1 sentence.
         `;
-        const critique = await DebateUtils.callInternalLLM([{ role: 'user', content: critiquePrompt }]);
+        const critiqueResult = await DebateUtils.callInternalLLM([{ role: 'user', content: critiquePrompt }]);
 
         // Step 3: Revise
         const finalPrompt = `
             ${baseSystemPrompt}
             
             [DRAFT]: ${draft.public_speech}
-            [SELF-CRITIQUE]: ${critique}
+            [SELF-CRITIQUE]: ${critiqueResult.content}
             
             Task: Generate FINAL JSON response, incorporating the critique.
             Output strictly JSON:
@@ -167,28 +167,50 @@ export class DebateGenerator {
             }
         `;
         const rawResponse = await DebateUtils.callInternalLLM([{ role: 'user', content: 'Finalize your response.' }], finalPrompt);
-        return this.handleToolAndReturn(rawResponse, baseSystemPrompt);
+        
+        // Accumulate tokens from all steps
+        const totalUsage = {
+            promptTokens: (draftResult.usage?.promptTokens || 0) + (critiqueResult.usage?.promptTokens || 0) + (rawResponse.usage?.promptTokens || 0),
+            completionTokens: (draftResult.usage?.completionTokens || 0) + (critiqueResult.usage?.completionTokens || 0) + (rawResponse.usage?.completionTokens || 0)
+        };
+
+        const result = await this.handleToolAndReturn(rawResponse.content, baseSystemPrompt);
+        return {
+            content: result.content,
+            usage: {
+                promptTokens: totalUsage.promptTokens + (result.usage?.promptTokens || 0),
+                completionTokens: totalUsage.completionTokens + (result.usage?.completionTokens || 0)
+            }
+        };
     } else {
         // Standard fast path
         const prompt = `${baseSystemPrompt}\nOutput strictly JSON:\n{"internal_monologue": "...", "tool_call": "...", "public_speech": "..."}`;
         const rawResponse = await DebateUtils.callInternalLLM([{ role: 'user', content: 'Please speak now.' }], prompt);
-        return this.handleToolAndReturn(rawResponse, baseSystemPrompt);
+        return this.handleToolAndReturn(rawResponse.content, baseSystemPrompt, rawResponse.usage);
     }
   }
 
   // Helper to handle tool calls
-  private static async handleToolAndReturn(rawResponse: string, systemPrompt: string): Promise<string> {
+  private static async handleToolAndReturn(content: string, systemPrompt: string, initialUsage?: any): Promise<{ content: string, usage?: any }> {
       let parsed: any = {};
       try {
-          parsed = JSON.parse(DebateUtils.cleanJson(rawResponse));
-      } catch (e) { return rawResponse; }
+          parsed = JSON.parse(DebateUtils.cleanJson(content));
+      } catch (e) { return { content, usage: initialUsage }; }
 
       if (parsed.tool_call) {
           const toolResult = await DebateTools.executeTool(parsed.tool_call);
           const followUpPrompt = `Tool Result: ${toolResult}\nGenerate final Public Speech based on this evidence. Output strictly JSON.`;
-          return await DebateUtils.callInternalLLM([{ role: 'user', content: followUpPrompt }], systemPrompt);
+          const response = await DebateUtils.callInternalLLM([{ role: 'user', content: followUpPrompt }], systemPrompt);
+          
+          return {
+              content: response.content,
+              usage: {
+                  promptTokens: (initialUsage?.promptTokens || 0) + (response.usage?.promptTokens || 0),
+                  completionTokens: (initialUsage?.completionTokens || 0) + (response.usage?.completionTokens || 0)
+              }
+          };
       }
-      return rawResponse;
+      return { content, usage: initialUsage };
   }
 
   static async generateSummary(debate: any) {
@@ -199,9 +221,9 @@ export class DebateGenerator {
         .order('round_index', { ascending: true });
     const transcript = messages?.map(m => `${m.agent_name}: ${m.content}`).join('\n') || '';
     const prompt = `Analyze transcript on "${debate.topic}". Provide Markdown summary in Chinese. NO HTML, NO ITALICS.`;
-    const summary = await DebateUtils.callInternalLLM([{ role: 'user', content: prompt }]);
-    await supabase.from('agent_debates').update({ summary }).eq('id', debate.id);
-    await DebateUtils.saveMessage(debate.id, 'System', 'Judge', `**Summary Report**\n\n${summary}`, 999, undefined, true);
+    const result = await DebateUtils.callInternalLLM([{ role: 'user', content: prompt }]);
+    await supabase.from('agent_debates').update({ summary: result.content }).eq('id', debate.id);
+    await DebateUtils.saveMessage(debate.id, 'System', 'Judge', `**Summary Report**\n\n${result.content}`, 999, undefined, true, result.usage?.promptTokens, result.usage?.completionTokens);
   }
 
   static async generateStructuredResult(debate: any) {
@@ -241,9 +263,12 @@ export class DebateGenerator {
         3. Use Chinese for content.
     `;
     
-    const jsonStr = await DebateUtils.callInternalLLM([{ role: 'user', content: prompt }]);
+    const result = await DebateUtils.callInternalLLM([{ role: 'user', content: prompt }]);
     try {
-        return JSON.parse(DebateUtils.cleanJson(jsonStr));
+        const parsed = JSON.parse(DebateUtils.cleanJson(result.content));
+        // Inject usage into the parsed object for the caller to save
+        parsed._usage = result.usage; 
+        return parsed;
     } catch (e) {
         console.error('Failed to parse structured result:', e);
         return {
@@ -251,7 +276,8 @@ export class DebateGenerator {
             key_arguments: [],
             risks: [],
             action_items: [],
-            summary_markdown: "Failed to generate structured summary."
+            summary_markdown: "Failed to generate structured summary.",
+            _usage: result.usage
         };
     }
   }

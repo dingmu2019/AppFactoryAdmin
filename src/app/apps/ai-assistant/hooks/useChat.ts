@@ -58,7 +58,9 @@ export const useChat = (activeAgent: Agent | null) => {
               content: msg.content,
               timestamp: new Date(msg.created_at).getTime(),
               feedback: msg.feedback as 'like' | 'dislike' | undefined,
-              attachments: msg.attachments || []
+              attachments: msg.attachments || [],
+              prompt_tokens: msg.prompt_tokens,
+              completion_tokens: msg.completion_tokens
           }));
           setMessages(mappedMessages);
       } else {
@@ -116,7 +118,9 @@ export const useChat = (activeAgent: Agent | null) => {
               content: msg.content,
               timestamp: new Date(msg.created_at).getTime(),
               feedback: msg.feedback as 'like' | 'dislike' | undefined,
-              attachments: msg.attachments || []
+              attachments: msg.attachments || [],
+              prompt_tokens: msg.prompt_tokens,
+              completion_tokens: msg.completion_tokens
           }));
           setMessages(prev => [...mappedMore, ...prev]);
       } else {
@@ -158,7 +162,7 @@ export const useChat = (activeAgent: Agent | null) => {
       return () => observer.disconnect();
   }, []);
 
-  const saveMessageToDB = async (role: 'user' | 'assistant', content: string, replyTo?: string, msgAttachments?: any[]) => {
+  const saveMessageToDB = async (role: 'user' | 'assistant', content: string, replyTo?: string, msgAttachments?: any[], promptTokens?: number, completionTokens?: number) => {
       if (!activeAgent) return null;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
@@ -167,7 +171,9 @@ export const useChat = (activeAgent: Agent | null) => {
         user_id: user.id,
         role,
         content,
-        attachments: msgAttachments || []
+        attachments: msgAttachments || [],
+        prompt_tokens: promptTokens || 0,
+        completion_tokens: completionTokens || 0
       };
       if (replyTo) payload.reply_to = replyTo;
       const { data, error } = await supabase
@@ -260,9 +266,16 @@ ${activeAgent.system_prompt}
 - For code, always specify the language.
 - For diagrams, use Mermaid syntax.
 `;
-      const aiContent = await callLLM(detailedHistoryContext, dynamicSystemPrompt, activeAgent.id);
-      const savedAiMsg = await saveMessageToDB('assistant', aiContent, savedUserMsg?.id);
-      const aiResponse: Message = { id: savedAiMsg?.id || (Date.now() + 1).toString(), role: 'assistant', content: aiContent, timestamp: Date.now() };
+      const aiResult = await callLLM(detailedHistoryContext, dynamicSystemPrompt, activeAgent.id);
+      const savedAiMsg = await saveMessageToDB('assistant', aiResult.content, savedUserMsg?.id, undefined, aiResult.usage?.promptTokens, aiResult.usage?.completionTokens);
+      const aiResponse: Message = { 
+          id: savedAiMsg?.id || (Date.now() + 1).toString(), 
+          role: 'assistant', 
+          content: aiResult.content, 
+          timestamp: Date.now(),
+          prompt_tokens: aiResult.usage?.promptTokens,
+          completion_tokens: aiResult.usage?.completionTokens
+      };
       setMessages(prev => [...prev, aiResponse]);
       return { ok: true as const };
     } catch (error: any) {

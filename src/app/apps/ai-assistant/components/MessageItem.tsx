@@ -112,6 +112,26 @@ export const MessageItem: React.FC<MessageItemProps> = ({
               {msg.content}
             </ReactMarkdown>
           </div>
+
+          {/* Token Usage Display */}
+          {(msg.prompt_tokens || msg.completion_tokens) ? (
+            <div className={`mt-3 pt-2 border-t text-[10px] font-medium tracking-tight flex gap-3 opacity-40 group-hover:opacity-100 transition-opacity ${
+              msg.role === 'user' ? 'border-white/10 text-white/80' : 'border-zinc-100 dark:border-zinc-800 text-zinc-400'
+            }`}>
+              <div className="flex items-center gap-1">
+                <span>Input:</span>
+                <span className="font-bold">{msg.prompt_tokens || 0}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>Output:</span>
+                <span className="font-bold">{msg.completion_tokens || 0}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>Total:</span>
+                <span className="font-bold">{(msg.prompt_tokens || 0) + (msg.completion_tokens || 0)}</span>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Actions below the bubble */}

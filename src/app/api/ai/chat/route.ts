@@ -78,5 +78,8 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
 
     const response = await (modelRouter as any).routeRequest(aiRequest);
 
-    return NextResponse.json({ content: response.content });
+    return NextResponse.json({ 
+        content: response.content,
+        usage: response.usage 
+    });
 });

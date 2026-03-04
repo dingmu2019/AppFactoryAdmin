@@ -45,10 +45,9 @@ export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
           jsonStr = jsonStr.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
       const json = JSON.parse(jsonStr);
-      if (json.public_speech) {
-          content = json.public_speech;
-          internalMonologue = json.internal_monologue;
-      }
+      // Support multiple key formats
+      content = json.public_speech || json.speech || json.content || content;
+      internalMonologue = json.internal_monologue || json.thought || json.analysis || null;
   } catch (e) {
       // 2. Fallback: Try Legacy HTML Pattern
       if (typeof msg.content === 'string' && msg.content.includes('<details')) {
@@ -139,6 +138,24 @@ export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
                         {content}
                     </ReactMarkdown>
                 </div>
+            )}
+
+            {/* Token Usage Display */}
+            {!isSystem && (msg.prompt_tokens || msg.completion_tokens) && (
+              <div className="mt-4 pt-2 border-t border-zinc-100 dark:border-zinc-700/50 flex gap-3 text-[10px] text-zinc-400 font-medium opacity-50 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1">
+                  <span>Input:</span>
+                  <span className="text-zinc-600 dark:text-zinc-300">{msg.prompt_tokens || 0}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>Output:</span>
+                  <span className="text-zinc-600 dark:text-zinc-300">{msg.completion_tokens || 0}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>Total:</span>
+                  <span className="text-indigo-500 font-bold">{(msg.prompt_tokens || 0) + (msg.completion_tokens || 0)}</span>
+                </div>
+              </div>
             )}
           </>
         </div>

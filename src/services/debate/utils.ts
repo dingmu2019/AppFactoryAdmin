@@ -58,7 +58,17 @@ export class DebateUtils {
     return cleaned.slice(start).trim();
   }
 
-  static async saveMessage(debateId: string, name: string, role: string, content: string, round: number, thought?: string, isSummary: boolean = false) {
+  static async saveMessage(
+    debateId: string, 
+    name: string, 
+    role: string, 
+    content: string, 
+    round: number, 
+    thought?: string, 
+    isSummary: boolean = false,
+    promptTokens: number = 0,
+    completionTokens: number = 0
+  ) {
     let finalContent = content;
 
     // --- VISUALIZING SYSTEM 2 ---
@@ -75,11 +85,13 @@ export class DebateUtils {
       role: role,
       content: finalContent,
       round_index: round,
-      is_summary: isSummary
+      is_summary: isSummary,
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens
     });
   }
 
-  static async callInternalLLM(messages: any[], systemPrompt?: string): Promise<string> {
+  static async callInternalLLM(messages: any[], systemPrompt?: string): Promise<{ content: string, usage?: any }> {
     if (modelRouter.getRegisteredConfigs().length === 0) {
         await loadLLMConfigsIntoRouter(modelRouter, supabase as any);
     }
@@ -90,6 +102,9 @@ export class DebateUtils {
         complexity: 'simple'
     });
     
-    return response.content;
+    return {
+        content: response.content,
+        usage: response.usage
+    };
   }
 }
