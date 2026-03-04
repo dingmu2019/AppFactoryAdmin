@@ -14,10 +14,20 @@ export const handleExportPDFMsg = (msg: any) => {
             throw new Error('Popup blocked');
         }
         
+        let content = msg.content;
+        try {
+            // Attempt to parse JSON content if it exists
+            const jsonContent = JSON.parse(msg.content);
+            // Prioritize public speech, fallback to other fields or raw content
+            content = jsonContent.public_speech || jsonContent.speech || jsonContent.content || msg.content;
+        } catch (e) {
+            // Content is not JSON, use as is
+        }
+
         const contentHtml = renderToStaticMarkup(
             <div className="markdown-body">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-                    {msg.content}
+                    {content}
                 </ReactMarkdown>
             </div>
         );
@@ -65,10 +75,17 @@ export const handleExportPDFChat = async (debate: any) => {
     const messagesHtml = debate.messages.map((msg: any) => {
         const isSystem = msg.agent_name === 'System';
         const avatar = debate.participants?.find((p: any) => p.name === msg.agent_name)?.avatar || '👤';
+        
+        let content = msg.content;
+        try {
+            const jsonContent = JSON.parse(msg.content);
+            content = jsonContent.public_speech || jsonContent.speech || jsonContent.content || msg.content;
+        } catch (e) {}
+
         // Always render markdown content
         const contentHtml = renderToStaticMarkup(
             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-                {msg.content}
+                {content}
             </ReactMarkdown>
         );
         return `<div class="message ${isSystem ? 'system' : 'agent'}">${!isSystem ? `<div class="avatar">${avatar}</div><div class="bubble-container"><div class="meta"><span class="name">${msg.agent_name}</span><span class="role">${msg.role}</span></div><div class="bubble">${contentHtml}</div></div>` : `<div class="system-bubble">${contentHtml}</div>`}</div>`;

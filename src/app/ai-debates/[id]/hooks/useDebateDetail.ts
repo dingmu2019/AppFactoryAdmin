@@ -82,6 +82,15 @@ export const useDebateDetail = (id: string | undefined) => {
                 setDebate(prev => {
                     if (!prev) return prev;
                     if (prev.messages.some(m => m.id === payload.new.id)) return prev;
+                    // Auto-update timer if status is running but no timer yet (e.g. recovered by Cron)
+                    if (prev.status === 'running' && !timeLeft && prev.started_at) {
+                        const startTime = new Date(prev.started_at).getTime();
+                        const durationMs = prev.duration_limit * 60 * 1000;
+                        const endTime = startTime + durationMs;
+                        if (Date.now() < endTime) {
+                            // Trigger re-render to start timer effect
+                        }
+                    }
                     return { ...prev, messages: [...prev.messages, payload.new] };
                 });
             }

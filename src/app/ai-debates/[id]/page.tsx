@@ -13,6 +13,7 @@ import { DebateOverviewBar } from './components/DebateOverviewBar';
 import { SummaryMessage } from './components/SummaryMessage';
 import { DebateMessageItem } from './components/DebateMessageItem';
 import { DebateSidebar } from './components/DebateSidebar';
+import { OrchestrationMessage } from './components/OrchestrationMessage';
 import { useDebateDetail } from './hooks/useDebateDetail';
 import { handleExportPDFMsg, handleExportPDFChat, handleExportScreenshot } from './utils/exportUtils';
 
@@ -270,19 +271,26 @@ export default function DebateDetailPage() {
                   />
                 )}
 
-                {filteredMessages.map((msg: any) => (
-                  <DebateMessageItem
-                    key={msg.id}
-                    msg={msg}
-                    debate={debate}
-                    expandedThinking={expandedThinking}
-                    setExpandedThinking={setExpandedThinking}
-                    showThinking={showThinking}
-                    onCopy={handleCopy}
-                    onScreenshot={handleScreenshot}
-                    onExportPDF={handleExportPDFMsg}
-                  />
-                ))}
+                {filteredMessages.map((msg: any) => {
+                  // Special rendering for Orchestration messages
+                  if ((msg.agent_role === 'Orchestrator' || msg.agent_role === 'Moderator') && msg.agent_name === 'System') {
+                      return <OrchestrationMessage key={msg.id} msg={msg} />;
+                  }
+
+                  return (
+                    <DebateMessageItem
+                      key={msg.id}
+                      msg={msg}
+                      debate={debate}
+                      expandedThinking={expandedThinking}
+                      setExpandedThinking={setExpandedThinking}
+                      showThinking={showThinking}
+                      onCopy={handleCopy}
+                      onScreenshot={handleScreenshot}
+                      onExportPDF={handleExportPDFMsg}
+                    />
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </>
             )}

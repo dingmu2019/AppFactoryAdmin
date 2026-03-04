@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase';
 import { useToast, useI18n, usePageHeader } from '@/contexts';
 import { toPng } from 'html-to-image';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { saveAs } from 'file-saver';
 import { SkillsCenterModal } from './SkillsCenterModal';
 import { SystemPromptModal } from './SystemPromptModal';
@@ -249,58 +248,161 @@ export const AIAssistant: React.FC = () => {
   const handleExportPDF = async (msgId: string) => {
       const element = document.getElementById(`msg-${msgId}`);
       if (!element) return;
-      const target = element.querySelector('.ai-message-bubble') as HTMLElement || element.querySelector('.markdown-body') as HTMLElement;
-      if (!target) return;
+      const bubble = element.querySelector('.ai-message-bubble') as HTMLElement;
+      if (!bubble) return;
       
       setIsExportingPDF(msgId);
       showToast(t('common.ai.assistant.generatingPDF'), 'info');
+      
       try {
-          // Use a clone to ensure clean export without hover states or absolute elements
-          const clone = target.cloneNode(true) as HTMLElement;
-          clone.style.width = target.offsetWidth + 'px';
-          clone.style.padding = '20px';
-          clone.style.backgroundColor = '#ffffff';
-          clone.style.color = '#000000';
-          clone.classList.remove('dark'); // Force light mode for PDF
-          document.body.appendChild(clone);
-          
-          sanitizeOklchStyles(clone, document);
-
-          const canvas = await html2canvas(clone, {
-              scale: 2,
-              useCORS: true,
-              logging: false,
-              backgroundColor: '#ffffff',
-          });
-
-          document.body.removeChild(clone);
-
-          const imgData = canvas.toDataURL('image/png');
-          const pdf = new jsPDF({
-              orientation: 'p',
-              unit: 'mm',
-              format: 'a4'
-          });
-
-          const imgProps = pdf.getImageProperties(imgData);
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-          const pageHeight = pdf.internal.pageSize.getHeight();
-          
-          let heightLeft = pdfHeight;
-          let position = 0;
-
-          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-          heightLeft -= pageHeight;
-
-          while (heightLeft > 0) {
-             position = heightLeft - pdfHeight;
-             pdf.addPage();
-             pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-             heightLeft -= pageHeight;
+          const printWindow = window.open('', '_blank');
+          if (!printWindow) {
+              throw new Error('Popup blocked');
           }
 
-          pdf.save(`AI-Chat-Export-${new Date().getTime()}.pdf`);
+          // Clone the content and clean up interactive elements
+          const contentClone = bubble.cloneNode(true) as HTMLElement;
+          // Remove buttons, absolute toolbars, and lucide icons that shouldn't be in the PDF
+          contentClone.querySelectorAll('button, .absolute, .lucide, [role="tooltip"]').forEach(el => el.remove());
+          
+          const bubbleHtml = contentClone.innerHTML;
+          const isDark = document.documentElement.classList.contains('dark');
+          const agentName = activeAgent?.name || 'AI Assistant';
+
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>AI Chat Export - ${agentName}</title>
+                <style>
+                  body { 
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    padding: 40px; 
+                    line-height: 1.6; 
+                    color: #1e293b; 
+                    background: #fff;
+                    max-width: 850px;
+                    margin: 0 auto;
+                    -webkit-print-color-adjust: exact;
+                  }
+                  .export-container {
+                    border: 1px solid #e2e8f0;
+                    border-radius: 16px;
+                    padding: 40px;
+                    background: #fff;
+                    position: relative;
+                  }
+                  .header {
+                    margin-bottom: 30px;
+                    padding-bottom: 15px;
+                    border-bottom: 2px solid #f1f5f9;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                  }
+                  .header-title {
+                    font-size: 20px;
+                    font-weight: 800;
+                    color: #4f46e5;
+                  }
+                  .header-meta {
+                    font-size: 12px;
+                    color: #94a3b8;
+                  }
+                  .markdown-body { 
+                    font-size: 15px; 
+                  }
+                  .markdown-body h1 { font-size: 2em; margin-top: 0; margin-bottom: 16px; font-weight: 700; color: #0f172a; }
+                  .markdown-body h2 { font-size: 1.5em; margin-top: 24px; margin-bottom: 16px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; }
+                  .markdown-body h3 { font-size: 1.25em; margin-top: 24px; margin-bottom: 16px; font-weight: 600; color: #0f172a; }
+                  .markdown-body p { margin-bottom: 16px; }
+                  .markdown-body ul, .markdown-body ol { padding-left: 2em; margin-bottom: 16px; }
+                  .markdown-body li { margin-bottom: 4px; }
+                  .markdown-body pre { 
+                    background: #0f172a; 
+                    color: #f8fafc; 
+                    padding: 20px; 
+                    border-radius: 12px; 
+                    overflow-x: auto; 
+                    margin: 20px 0; 
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+                    font-size: 13px;
+                    line-height: 1.5;
+                  }
+                  .markdown-body code { 
+                    background: #f1f5f9; 
+                    padding: 3px 6px; 
+                    border-radius: 6px; 
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                    font-size: 0.85em; 
+                    color: #4f46e5; 
+                  }
+                  .markdown-body table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin: 24px 0; 
+                    font-size: 14px;
+                  }
+                  .markdown-body th, .markdown-body td { 
+                    border: 1px solid #e2e8f0; 
+                    padding: 12px; 
+                    text-align: left; 
+                  }
+                  .markdown-body th { 
+                    background: #f8fafc; 
+                    font-weight: 600; 
+                    color: #334155;
+                  }
+                  .markdown-body blockquote { 
+                    border-left: 4px solid #4f46e5; 
+                    padding: 8px 20px; 
+                    color: #475569; 
+                    background: #f8fafc;
+                    border-radius: 0 8px 8px 0;
+                    margin: 20px 0; 
+                  }
+                  .markdown-body img { max-width: 100%; height: auto; border-radius: 12px; margin: 16px 0; }
+                  .mermaid-container { 
+                    text-align: center; 
+                    margin: 30px 0; 
+                    padding: 20px;
+                    background: #f8fafc;
+                    border-radius: 12px;
+                    border: 1px solid #f1f5f9;
+                  }
+                  .mermaid-container svg { max-width: 100%; height: auto; }
+                  
+                  @media print {
+                    body { padding: 0; }
+                    .export-container { border: none; box-shadow: none; padding: 0; }
+                    .header { margin-bottom: 40px; }
+                    @page { margin: 20mm; size: A4; }
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="header">
+                  <div class="header-title">MC-CWIN AI ASSISTANT</div>
+                  <div class="header-meta">Exported on ${new Date().toLocaleString()}</div>
+                </div>
+                <div class="export-container">
+                  <div class="markdown-body">
+                    ${bubbleHtml}
+                  </div>
+                </div>
+                <script>
+                  window.onload = () => {
+                    setTimeout(() => {
+                      window.print();
+                      // Optional: Close window after printing
+                      // window.onfocus = () => window.close();
+                    }, 800);
+                  };
+                </script>
+              </body>
+            </html>
+          `);
+          printWindow.document.close();
           showToast(t('common.ai.assistant.pdfSuccess'), 'success');
       } catch (err) { 
           console.error('PDF Export failed:', err);

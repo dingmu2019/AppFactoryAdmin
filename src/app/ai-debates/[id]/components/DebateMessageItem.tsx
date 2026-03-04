@@ -38,12 +38,18 @@ export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
   
   // 1. Try JSON
   try {
-      let jsonStr = msg.content;
+      let jsonStr = msg.content.trim();
+      // Handle "内部独白" prefix which might be added by some legacy logic or specific agent output
+      if (jsonStr.includes('内部独白')) {
+          jsonStr = jsonStr.replace(/^[•\s]*内部独白\s*/, '');
+      }
+      
       if (jsonStr.startsWith('```json')) {
           jsonStr = jsonStr.replace(/^```json\s*/, '').replace(/\s*```$/, '');
       } else if (jsonStr.startsWith('```')) {
           jsonStr = jsonStr.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
+      
       const json = JSON.parse(jsonStr);
       // Support multiple key formats
       content = json.public_speech || json.speech || json.content || content;
@@ -57,6 +63,14 @@ export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
               content = match[2].trim();
           }
       }
+  }
+
+  // --- HACK: Hide raw JSON if it looks like orchestration but slipped through (e.g. alignment message) ---
+  if (typeof content === 'string' && content.trim().startsWith('{"type":"alignment"')) {
+      return null; // Don't render raw JSON for alignment messages that weren't caught by page.tsx
+  }
+  if (typeof content === 'string' && content.trim().startsWith('{"type":"orchestration"')) {
+      return null; // Don't render raw JSON for orchestration messages that weren't caught by page.tsx
   }
 
   const handleCopy = () => {

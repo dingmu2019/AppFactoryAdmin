@@ -30,8 +30,37 @@ export class DebateGenerator {
     return JSON.parse(cleanJson);
   }
 
-  static async determineNextSpeaker(debate: any, agents: AgentProfile[], debateId: string, lastSpeakerIdx: number): Promise<number> {
-    if (lastSpeakerIdx === -1) return 0;
+  static async evaluateAlignment(debate: any, context: string): Promise<{ score: number, status: string, reason: string }> {
+    const prompt = `
+        Topic: "${debate.topic}"
+        Context:
+        ${context}
+        
+        Task: Assess the current "Alignment/Consensus" status.
+        
+        Output strictly JSON:
+        {
+            "score": 0-100, // 0=Total Conflict, 100=Full Consensus
+            "status": "Diverging" | "Converging" | "Stuck" | "Resolved",
+            "reason": "Brief explanation (1 sentence)"
+        }
+    `;
+    try {
+        const result = await DebateUtils.callInternalLLM([{ role: 'user', content: prompt }]);
+        const json = JSON.parse(DebateUtils.cleanJson(result.content));
+        return {
+            score: json.score || 50,
+            status: json.status || "Diverging",
+            reason: json.reason || "Analyzing..."
+        };
+    } catch (e) {
+        return { score: 50, status: "Unknown", reason: "Analysis failed" };
+    }
+  }
+
+  static async determineNextSpeaker(debate: any, agents: AgentProfile[], debateId: string, lastSpeakerIdx: number): Promise<{ index: number, reason: string, thought: string, _usage?: any }> {
+    if (lastSpeakerIdx === -1) return { index: 0, reason: "Initial speaker", thought: "Starting the debate." };
+    
     const { data: recentMsgs } = await supabase
         .from('debate_messages')
         .select('agent_name, content')
@@ -39,28 +68,59 @@ export class DebateGenerator {
         .order('created_at', { ascending: false })
         .limit(3);
     const history = recentMsgs?.reverse().map(m => `${m.agent_name}: ${m.content}`).join('\n') || '';
+    
     const prompt = `
         You are the Moderator of a debate.
         Topic: "${debate.topic}"
         Participants:
         ${agents.map((a, i) => `${i}. ${a.name} (${a.role})`).join('\n')}
+        
         Recent transcript:
         ${history}
-        Task: Select the next speaker index (0-${agents.length-1}).
-        Rules:
-        1. If the last argument was weak or controversial, pick a Critic/Challenger.
-        2. If the debate is stuck, pick a Constructive role.
-        3. Do not pick the same person twice in a row.
-        Return JSON: {"next_speaker_index": 0, "reason": "..."}
+        
+        Task: Select the next speaker index (0-${agents.length-1}) and Explain Why.
+        
+        Orchestration Logic (System 2):
+        1. Analyze the last speaker's argument strength.
+        2. Identify if there's a need for critique (Critic), new perspective (Diverse), or synthesis (Constructive).
+        3. Check for repetitive loops.
+        
+        Output strictly JSON:
+        {
+            "internal_thought": "Analyze the current flow... (e.g., Argument A is weak, needs a challenge)",
+            "next_speaker_index": 0, 
+            "reason": "Public explanation for the audience (e.g., 'Inviting Dr. X to verify these claims.')"
+        }
     `;
+    
     try {
         const result = await DebateUtils.callInternalLLM([{ role: 'user', content: prompt }]);
         const jsonResult = JSON.parse(DebateUtils.cleanJson(result.content));
         const idx = jsonResult.next_speaker_index;
-        if (typeof idx === 'number' && idx >= 0 && idx < agents.length) return idx;
-        return (lastSpeakerIdx + 1) % agents.length;
+        
+        // Fallback if index invalid
+        if (typeof idx !== 'number' || idx < 0 || idx >= agents.length) {
+            return { 
+                index: (lastSpeakerIdx + 1) % agents.length, 
+                reason: "Fallback: Round-robin sequence.", 
+                thought: "LLM returned invalid index.",
+                _usage: result.usage
+            };
+        }
+
+        return { 
+            index: idx, 
+            reason: jsonResult.reason || "Selected based on debate flow.", 
+            thought: jsonResult.internal_thought || "Analyzing debate dynamics...",
+            _usage: result.usage
+        };
+
     } catch (e) {
-        return (lastSpeakerIdx + 1) % agents.length;
+        return { 
+            index: (lastSpeakerIdx + 1) % agents.length, 
+            reason: "System Fallback: Sequential order.", 
+            thought: "Orchestration service error.",
+        };
     }
   }
 

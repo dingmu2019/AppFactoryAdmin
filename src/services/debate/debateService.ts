@@ -75,10 +75,23 @@ export class DebateService {
   static async startDebate(debateId: string) {
     const { data: debate } = await supabase.from('agent_debates').select('*').eq('id', debateId).single();
     if (!debate) throw new Error('Debate not found');
-    if (debate.status === 'running') return;
+    
+    // Update status to running immediately
     await supabase.from('agent_debates').update({ status: 'running', started_at: new Date().toISOString() }).eq('id', debateId);
+    
+    // In Serverless environment (Vercel), we cannot rely on long-running background process.
+    // Instead, we execute ONE round immediately, and let the Cron Job pick up the rest.
+    // Or we use QStash (if configured) to trigger the next round.
+    
+    // For now, we use the "Cron-Rescue" pattern:
+    // 1. Mark as running.
+    // 2. Try to run loop (will likely timeout after 10-60s).
+    // 3. Cron job runs every minute, finds 'running' debates, and resumes them.
+    
     activeDebates.set(debateId, { status: 'running' });
-    this.runDebateLoop(debate);
+    
+    // Don't await this in the API route handler to return response fast (though Vercel might kill it)
+    this.runDebateLoop(debate).catch(err => console.error(`[Debate] Loop error:`, err));
   }
 
   static async stopDebate(debateId: string) {
@@ -91,9 +104,27 @@ export class DebateService {
   private static async runDebateLoop(debate: any) {
     const agents: AgentProfile[] = debate.participants;
     const durationMs = (debate.duration_limit || 5) * 60 * 1000;
-    const startTime = Date.now();
+    
+    // Check actual start time from DB, fallback to now
+    const dbStartTime = debate.started_at ? new Date(debate.started_at).getTime() : Date.now();
     let round = 1;
     let lastSpeakerIndex = -1;
+    
+    // Resume state from DB messages to determine round and last speaker
+    const { data: lastMsgs } = await supabase
+        .from('debate_messages')
+        .select('round_index, agent_name')
+        .eq('debate_id', debate.id)
+        .order('round_index', { ascending: false })
+        .limit(1);
+        
+    if (lastMsgs && lastMsgs.length > 0) {
+        round = lastMsgs[0].round_index + 1;
+        // Find agent index
+        const lastAgentName = lastMsgs[0].agent_name;
+        lastSpeakerIndex = agents.findIndex(a => a.name === lastAgentName);
+    }
+
     const CRITIC_INTERVAL = 4;
     const criticAgent: AgentProfile = {
         name: "Hassabis (Critic)",
@@ -103,22 +134,69 @@ export class DebateService {
     };
 
     try {
-      await DebateUtils.saveMessage(debate.id, 'System', 'Moderator', `Welcome everyone. Today's topic is: "${debate.topic}".`, 0);
+      if (round === 1) {
+          await DebateUtils.saveMessage(debate.id, 'System', 'Moderator', `Welcome everyone. Today's topic is: "${debate.topic}".`, 0);
+      }
 
-      while (Date.now() - startTime < durationMs) {
+      // Vercel Serverless Function Execution Limit Safety
+      // We run a loop, but we must check execution time to avoid hard kill.
+      // Assuming 60s max duration, we try to run for 40s then exit gracefully.
+      const loopStart = Date.now();
+      const MAX_EXECUTION_TIME = 40 * 1000; 
+
+      while (Date.now() - dbStartTime < durationMs) {
+        // Safety check: if this specific execution is running too long, break and let Cron pick it up
+        if (Date.now() - loopStart > MAX_EXECUTION_TIME) {
+            console.log(`[DebateService] Pausing debate ${debate.id} to avoid Serverless timeout. Waiting for Cron rescue.`);
+            break;
+        }
+
         const control = activeDebates.get(debate.id);
-        if (!control || control.status !== 'running') break;
+        if (!control || control.status !== 'running') {
+            // Double check DB in case memory cache is lost (new serverless instance)
+            const { data: currentStatus } = await supabase.from('agent_debates').select('status').eq('id', debate.id).single();
+            if (currentStatus?.status !== 'running') break;
+        }
 
         let speaker: AgentProfile;
         let isCriticTurn = false;
+        let orchestrationReason = "";
+        let orchestrationThought = "";
+        let orchestrationUsage = null;
 
         if (round > 1 && round % CRITIC_INTERVAL === 0) {
             isCriticTurn = true;
             speaker = criticAgent;
+            orchestrationReason = "Scheduled critique phase.";
+            orchestrationThought = "It's time for a critical review.";
         } else {
-            const speakerIndex = await DebateGenerator.determineNextSpeaker(debate, agents, debate.id, lastSpeakerIndex);
-            speaker = agents[speakerIndex];
-            lastSpeakerIndex = speakerIndex;
+            const decision = await DebateGenerator.determineNextSpeaker(debate, agents, debate.id, lastSpeakerIndex);
+            speaker = agents[decision.index];
+            lastSpeakerIndex = decision.index;
+            orchestrationReason = decision.reason;
+            orchestrationThought = decision.thought;
+            orchestrationUsage = decision._usage;
+        }
+
+        // --- EXPOSE ORCHESTRATION LOGIC ---
+        // Save the moderator's decision process as a system message
+        if (round > 1) { // Skip for the very first round if desired, or keep it
+            await DebateUtils.saveMessage(
+                debate.id,
+                'System',
+                'Orchestrator',
+                JSON.stringify({
+                    type: 'orchestration',
+                    target_speaker: speaker.name,
+                    reason: orchestrationReason,
+                    thought: orchestrationThought
+                }),
+                round,
+                orchestrationThought, // Also save thought in internal_monologue column for consistency
+                false,
+                orchestrationUsage?.promptTokens,
+                orchestrationUsage?.completionTokens
+            );
         }
 
         const { data: recentMsgs } = await supabase.from('debate_messages').select('agent_name, content').eq('debate_id', debate.id).order('created_at', { ascending: false }).limit(5);
@@ -132,7 +210,7 @@ export class DebateService {
         
         const fullContext = `${context}${schemaInfo}`;
         
-        const elapsedTime = Date.now() - startTime;
+        const elapsedTime = Date.now() - dbStartTime;
         const timeLeftRatio = 1 - (elapsedTime / durationMs);
 
         let dualStreamResponse = isCriticTurn 
@@ -161,6 +239,26 @@ export class DebateService {
             dualStreamResponse.usage?.promptTokens,
             dualStreamResponse.usage?.completionTokens
         );
+
+        // --- REAL-TIME ALIGNMENT TRACKING ---
+        if (round % 2 === 0) { // Evaluate every 2 rounds to save tokens
+            const alignment = await DebateGenerator.evaluateAlignment(debate, fullContext);
+            await DebateUtils.saveMessage(
+                debate.id,
+                'System',
+                'Moderator',
+                JSON.stringify({
+                    type: 'alignment',
+                    score: alignment.score,
+                    status: alignment.status,
+                    reason: alignment.reason
+                }),
+                round,
+                undefined,
+                false
+            );
+        }
+
         await new Promise(resolve => setTimeout(resolve, 5000));
         round++;
       }
