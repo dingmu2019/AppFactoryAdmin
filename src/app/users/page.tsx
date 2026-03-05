@@ -2,14 +2,27 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { 
+  Users, 
   Search, 
-  Mail, 
-  MapPin, 
   RefreshCw, 
-  Edit2, 
-  Trash2,
-  ShieldCheck,
+  Plus, 
+  MoreVertical, 
+  ShieldCheck, 
+  UserPlus, 
+  Mail, 
+  Trash2, 
+  MapPin, 
+  Calendar, 
+  LayoutGrid, 
+  List, 
+  CheckCircle2, 
+  XCircle, 
+  Ban,
+  Clock,
+  ExternalLink,
+  Edit2,
   UserCheck,
   Settings
 } from 'lucide-react';
@@ -345,7 +358,15 @@ const UsersPage: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {u.avatar_url ? (
-                            <img src={u.avatar_url} alt={u.full_name} className="w-9 h-9 rounded-full object-cover" />
+                            <div className="relative w-9 h-9 rounded-full overflow-hidden">
+                                <Image 
+                                    src={u.avatar_url} 
+                                    alt={u.full_name} 
+                                    fill
+                                    sizes="36px"
+                                    className="object-cover" 
+                                />
+                            </div>
                         ) : (
                             <div className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 font-medium text-sm">
                             {(u.full_name || u.email || 'U').charAt(0).toUpperCase()}

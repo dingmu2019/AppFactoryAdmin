@@ -20,10 +20,12 @@ export const useDebateDetail = (id: string | undefined) => {
   const { t } = useI18n();
   const [debate, setDebate] = useState<DebateDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOrchestrating, setIsOrchestrating] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
+  const orchestrationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchDetail = async () => {
     if (!id) return null;
@@ -162,6 +164,49 @@ export const useDebateDetail = (id: string | undefined) => {
       return () => clearInterval(interval);
     }
   }, [debate?.status, debate?.started_at, debate?.duration_limit]);
+
+  useEffect(() => {
+    if (debate?.status === 'running' && id) {
+      const processRound = async () => {
+        if (isOrchestrating) return;
+        
+        // Simple client-side pacing: wait 5-10s between rounds
+        const delay = Math.random() * 5000 + 5000;
+        orchestrationTimerRef.current = setTimeout(async () => {
+            if (debate.status !== 'running') return;
+            
+            setIsOrchestrating(true);
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const response = await fetch(`/api/ai/debates/${id}/round`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${session?.access_token}`,
+                        'Content-Type': 'application/json' 
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.finished) {
+                        // Debate finalized on server
+                    }
+                }
+            } catch (err) {
+                console.error('[Orchestrator] Round failed:', err);
+            } finally {
+                setIsOrchestrating(false);
+            }
+        }, delay);
+      };
+
+      processRound();
+    }
+    
+    return () => {
+        if (orchestrationTimerRef.current) clearTimeout(orchestrationTimerRef.current);
+    };
+  }, [debate?.status, id, isOrchestrating]);
 
   return { debate, setDebate, isLoading, timeLeft, messagesEndRef, messagesContainerRef, handleScroll, fetchDetail };
 };

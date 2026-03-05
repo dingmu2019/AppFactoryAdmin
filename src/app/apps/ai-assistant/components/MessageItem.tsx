@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { User, Copy, Save, Trash2, Camera, FileText, Download, ThumbsUp, ThumbsDown, Loader2, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -25,7 +25,7 @@ interface MessageItemProps {
   onFeedback: (id: string, type: 'like' | 'dislike') => void;
 }
 
-export const MessageItem: React.FC<MessageItemProps> = ({
+export const MessageItem = memo(({
   msg,
   activeAgent,
   isCapturing,
@@ -38,7 +38,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   onExportPDF,
   onExportWord,
   onFeedback,
-}) => {
+}: MessageItemProps) => {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(true);
@@ -263,4 +263,4 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       </div>
     </div>
   );
-};
+});

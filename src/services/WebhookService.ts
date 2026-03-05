@@ -169,16 +169,18 @@ export class WebhookService {
         }
     }));
 
-    // 3. Update logs
-    for (const res of results) {
+    // 3. Update logs in parallel
+    const updatePromises = results.map(async (res) => {
         if (res.status === 'fulfilled') {
-            const { id, status, body, error } = res.value;
+            const { id, status, body } = res.value;
             const isSuccess = status >= 200 && status < 300;
+            const originalEvent = events.find(e => e.id === id);
+            if (!originalEvent) return;
             
             const updatePayload: any = {
                 status,
                 response_body: body,
-                attempt_count: events.find(e => e.id === id)!.attempt_count + 1,
+                attempt_count: originalEvent.attempt_count + 1,
                 updated_at: new Date().toISOString()
             };
 
@@ -190,12 +192,14 @@ export class WebhookService {
                 updatePayload.next_retry_at = nextRetry.toISOString();
             }
 
-            await supabase
+            return supabase
                 .from('sys_webhook_events')
                 .update(updatePayload)
                 .eq('id', id);
         }
-    }
+    });
+
+    await Promise.all(updatePromises.filter(Boolean));
   }
 }
 

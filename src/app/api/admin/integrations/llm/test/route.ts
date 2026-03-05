@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       case 'qianfan':
       case 'zhipu':
       case 'moonshot':
+      case 'minimax':
         // Most use OpenAI compatible API
         provider = new OpenAIProvider(providerConfig);
         break;

@@ -3,17 +3,22 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Save } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useI18n, usePageHeader, useToast } from '@/contexts';
 import { AppSidebar } from './components/AppSidebar';
 import { UsageSection } from './components/UsageSection';
 import { RecentRequests } from './components/RecentRequests';
-import { TrendsSection } from './components/TrendsSection';
 import { AlertsSection } from './components/AlertsSection';
 import { PolicySection } from './components/PolicySection';
 import { RequestDetails } from './components/RequestDetails';
 import { useGatewayData } from './hooks/useGatewayData';
 import type { RequestLog } from './types';
 import { formatDateTime, uniq, parseCommaList } from './utils';
+
+const TrendsSection = dynamic(() => import('./components/TrendsSection').then(mod => mod.TrendsSection), {
+  ssr: false,
+  loading: () => <div className="h-64 flex items-center justify-center bg-zinc-50 dark:bg-zinc-900/20 rounded-lg animate-pulse">Loading Trends...</div>
+});
 
 export default function SysAIGatewayPage() {
   const { t } = useI18n();

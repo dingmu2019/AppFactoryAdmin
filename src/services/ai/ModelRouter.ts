@@ -58,6 +58,7 @@ export class ModelRouter {
     switch (config.provider) {
       case 'openai':
       case 'deepseek': // Compatible with OpenAI client usually
+      case 'minimax':
         provider = new OpenAIProvider(config);
         break;
       case 'google':

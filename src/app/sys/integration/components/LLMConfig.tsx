@@ -34,6 +34,7 @@ const PROVIDERS = [
   { value: 'qianfan', label: 'Baidu Qianfan' },
   { value: 'zhipu', label: 'Zhipu AI (GLM)' },
   { value: 'moonshot', label: 'Moonshot (Kimi)' },
+  { value: 'minimax', label: 'MiniMax' },
 ];
 
 const formatDate = (dateString?: string) => {

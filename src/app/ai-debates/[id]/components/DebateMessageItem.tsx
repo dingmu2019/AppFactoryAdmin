@@ -1,11 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { User, Copy, Camera, Download, Check, Loader2 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import dynamic from 'next/dynamic';
 import { Tooltip } from "@/components/Tooltip";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { useI18n } from '@/contexts';
+
+// Lazy load heavy markdown components
+const ReactMarkdown = dynamic(() => import('react-markdown'), { ssr: false });
+const remarkGfm = dynamic(() => import('remark-gfm'), { ssr: false }) as any;
 
 interface DebateMessageItemProps {
   msg: any;
@@ -18,7 +21,7 @@ interface DebateMessageItemProps {
   onExportPDF: (msg: any) => void;
 }
 
-export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
+export const DebateMessageItem = memo(({
   msg,
   debate,
   expandedThinking,
@@ -27,7 +30,7 @@ export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
   onCopy,
   onScreenshot,
   onExportPDF,
-}) => {
+}: DebateMessageItemProps) => {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -194,4 +197,4 @@ export const DebateMessageItem: React.FC<DebateMessageItemProps> = ({
       </div>
     </div>
   );
-};
+});
