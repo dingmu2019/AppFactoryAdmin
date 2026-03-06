@@ -1,14 +1,11 @@
 
 import React, { useState, memo } from 'react';
 import { User, Copy, Camera, Download, Check, Loader2 } from 'lucide-react';
-import dynamic from 'next/dynamic';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Tooltip } from "@/components/Tooltip";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { useI18n } from '@/contexts';
-
-// Lazy load heavy markdown components
-const ReactMarkdown = dynamic(() => import('react-markdown'), { ssr: false });
-const remarkGfm = dynamic(() => import('remark-gfm'), { ssr: false }) as any;
 
 interface DebateMessageItemProps {
   msg: any;
@@ -46,34 +43,36 @@ export const DebateMessageItem = memo(({
   };
   
   // Try to parse content as JSON (internal_monologue + public_speech)
-  let content = msg.content;
+  let content = msg.content || '';
   let internalMonologue = null;
   
   // 1. Try JSON
-  try {
-      let jsonStr = msg.content.trim();
-      // Handle "内部独白" prefix which might be added by some legacy logic or specific agent output
-      if (jsonStr.includes('内部独白')) {
-          jsonStr = jsonStr.replace(/^[•\s]*内部独白\s*/, '');
-      }
-      
-      if (jsonStr.startsWith('```json')) {
-          jsonStr = jsonStr.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (jsonStr.startsWith('```')) {
-          jsonStr = jsonStr.replace(/^```\s*/, '').replace(/\s*```$/, '');
-      }
-      
-      const json = JSON.parse(jsonStr);
-      // Support multiple key formats
-      content = json.public_speech || json.speech || json.content || content;
-      internalMonologue = json.internal_monologue || json.thought || json.analysis || null;
-  } catch (e) {
-      // 2. Fallback: Try Legacy HTML Pattern
-      if (typeof msg.content === 'string' && msg.content.includes('<details')) {
-          const match = msg.content.match(/<details[\s\S]*?<\/summary>([\s\S]*?)<\/details>([\s\S]*)/);
-          if (match && match[2]) {
-              internalMonologue = match[1].trim();
-              content = match[2].trim();
+  if (typeof msg.content === 'string' && msg.content.trim()) {
+      try {
+          let jsonStr = msg.content.trim();
+          // Handle "内部独白" prefix which might be added by some legacy logic or specific agent output
+          if (jsonStr.includes('内部独白')) {
+              jsonStr = jsonStr.replace(/^[•\s]*内部独白\s*/, '');
+          }
+          
+          if (jsonStr.startsWith('```json')) {
+              jsonStr = jsonStr.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          } else if (jsonStr.startsWith('```')) {
+              jsonStr = jsonStr.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          }
+          
+          const json = JSON.parse(jsonStr);
+          // Support multiple key formats
+          content = json.public_speech || json.speech || json.content || content;
+          internalMonologue = json.internal_monologue || json.thought || json.analysis || null;
+      } catch (e) {
+          // 2. Fallback: Try Legacy HTML Pattern
+          if (msg.content.includes('<details')) {
+              const match = msg.content.match(/<details[\s\S]*?<\/summary>([\s\S]*?)<\/details>([\s\S]*)/);
+              if (match && match[2]) {
+                  internalMonologue = match[1].trim();
+                  content = match[2].trim();
+              }
           }
       }
   }

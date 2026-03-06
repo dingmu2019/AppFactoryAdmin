@@ -366,11 +366,8 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       // If no token, req.user is undefined.
       // The log endpoint should allow anonymous logging for login attempts (or use a special system endpoint).
       
-      // Current implementation of /api/audit-logs/log uses extractUser.
-      // It doesn't strictly require auth for the endpoint itself unless we added a guard.
-      // Let's try to log.
-      
-      await fetch('/api/audit-logs/log', {
+      // Use public endpoint for login failure/success logging
+      await fetch('/api/public/audit-logs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -380,12 +377,11 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
           action: 'LOGIN',
           resource: 'auth',
           status: error ? 'FAILURE' : 'SUCCESS',
-          // Add app_id explicitly
           details: { 
             email, 
             error: error?.message,
             method: 'password',
-            app_id: 'AdminSys_app' // Context
+            app_id: 'AdminSys_app' 
           }
         })
       });
@@ -413,16 +409,21 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
-        // Use standard fetch with keepalive: true to ensure request completes even if page unloads
-        fetch('/api/auth/logout', {
+        // Use public audit-logs endpoint with keepalive: true to ensure request completes even if page unloads
+        fetch('/api/public/audit-logs', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify({
-             app_id: 'AdminSys_app',
-             email: session.user.email 
+             action: 'LOGOUT',
+             resource: 'auth',
+             status: 'SUCCESS',
+             details: {
+               app_id: 'AdminSys_app',
+               email: session.user.email 
+             }
           }),
           keepalive: true
         }).catch(err => console.warn('Logout log failed:', err));

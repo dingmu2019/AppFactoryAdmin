@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { EmailService } from '@/services/emailService';
 import { NotificationService } from '@/services/notification/notificationService';
 import { withApiErrorHandling } from '@/lib/api-wrapper';
+import { AuditLogService } from '@/services/auditService';
 
 // In-memory storage for verification codes (Fallback if DB table is missing)
 const memoryVerificationCodes = new Map<string, { code: string, expiresAt: number }>();
@@ -25,6 +26,18 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
+
+    // Audit Log: Code Request
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
+    await AuditLogService.log({
+      action: 'REQUEST_CODE',
+      resource: 'auth',
+      status: 'SUCCESS',
+      details: { email, app_id: 'AdminSys_app' },
+      ip_address: ip,
+      user_agent: userAgent
+    });
 
     const code = generateCode();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes

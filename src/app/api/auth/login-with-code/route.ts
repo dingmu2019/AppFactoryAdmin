@@ -1,15 +1,31 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin, supabaseAdmin } from '@/lib/supabase';
 import { withApiErrorHandling } from '@/lib/api-wrapper';
+import { AuditLogService } from '@/services/auditService';
 
 export const POST = withApiErrorHandling(async (req: NextRequest) => {
     const body = await req.json();
     const { email, code } = body;
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
 
     if (!email || !code) {
       return NextResponse.json({ error: 'Email and code are required' }, { status: 400 });
     }
+
+    // Record Login Attempt
+    const logAttempt = async (status: 'SUCCESS' | 'FAILURE', errorMsg?: string, userId?: string) => {
+        await AuditLogService.log({
+            user_id: userId,
+            action: 'LOGIN',
+            resource: 'auth',
+            status,
+            details: { email, method: 'code', error: errorMsg, app_id: 'AdminSys_app' },
+            ip_address: ip,
+            user_agent: userAgent
+        });
+    };
 
     // 1. Verify Code from DB
     const { data: validCode, error: codeError } = await supabaseAdmin
@@ -21,6 +37,7 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
       .single();
 
     if (codeError || !validCode) {
+      await logAttempt('FAILURE', 'Invalid or expired code');
       return NextResponse.json({ error: 'Invalid or expired verification code' }, { status: 400 });
     }
 
@@ -115,6 +132,8 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
       console.error('Failed to generate auth link:', linkError);
       return NextResponse.json({ error: 'Failed to generate session token' }, { status: 500 });
     }
+
+    await logAttempt('SUCCESS', undefined, existingUser?.id);
 
     // 4. Return the token hash to client
     return NextResponse.json({ 

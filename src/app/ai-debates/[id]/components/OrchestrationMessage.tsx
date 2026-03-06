@@ -9,9 +9,12 @@ interface OrchestrationMessageProps {
 export const OrchestrationMessage: React.FC<OrchestrationMessageProps> = ({ msg }) => {
   const { t } = useI18n();
   
+  if (!msg.content) return null;
+  
   let content: any = {};
   try {
-      content = JSON.parse(msg.content);
+      content = typeof msg.content === 'string' ? JSON.parse(msg.content) : msg.content;
+      if (!content || typeof content !== 'object') return null;
   } catch (e) {
       return null;
   }

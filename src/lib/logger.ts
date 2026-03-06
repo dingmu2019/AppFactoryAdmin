@@ -41,8 +41,7 @@ export const SystemLogger = {
     try {
       const supabase = getSupabaseAdmin();
       
-      // We don't await here to avoid blocking the main request
-      supabase.from('system_error_logs').insert([{
+      const { error } = await supabase.from('system_error_logs').insert([{
         level: entry.level,
         message: entry.message.substring(0, 1000),
         stack_trace: entry.stack_trace,
@@ -53,10 +52,11 @@ export const SystemLogger = {
         path: entry.path,
         method: entry.method,
         resolved: false
-      }]).then(({ error }) => {
-        if (error) console.error('[SystemLogger] Failed to write to DB:', error);
-      }).catch(err => console.error('[SystemLogger] Uncaught DB error:', err));
-      
+      }]);
+
+      if (error) {
+        console.error('[SystemLogger] Failed to write to DB:', error);
+      }
     } catch (err) {
       console.error('[SystemLogger] Unexpected error:', err);
     }
