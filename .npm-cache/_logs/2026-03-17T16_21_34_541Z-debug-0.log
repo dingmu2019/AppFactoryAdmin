@@ -1,0 +1,23 @@
+0 verbose cli /usr/local/bin/node /usr/local/lib/node_modules/npm/bin/npm-cli.js
+1 info using npm@10.9.4
+2 info using node@v22.21.0
+3 silly config load:file:/usr/local/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/mac/Desktop/软件项目/mc-cwin/AdminSys-001/.npmrc
+5 silly config load:file:/Users/mac/.npmrc
+6 silly config load:file:/usr/local/etc/npmrc
+7 verbose title npm exec tsx scripts/drop-constraints.ts
+8 verbose argv "exec" "--" "tsx" "scripts/drop-constraints.ts"
+9 verbose logfile logs-max:10 dir:/Users/mac/Desktop/软件项目/mc-cwin/AdminSys-001/.npm-cache/_logs/2026-03-17T16_21_34_541Z-
+10 verbose logfile /Users/mac/Desktop/软件项目/mc-cwin/AdminSys-001/.npm-cache/_logs/2026-03-17T16_21_34_541Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules/@unrs
+14 http fetch GET 200 https://registry.npmjs.org/tsx 3404ms (cache revalidated)
+15 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+16 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+17 verbose cwd /Users/mac/Desktop/软件项目/mc-cwin/AdminSys-001
+18 verbose os Darwin 25.3.0
+19 verbose node v22.21.0
+20 verbose npm  v10.9.4
+21 verbose exit 0
+22 info ok

@@ -1,5 +1,5 @@
 
-import { supabase } from '../../lib/supabase';
+import { supabaseAdmin as supabase } from '../../lib/supabase';
 import { StripeAdapter } from './adapters/StripeAdapter';
 import { WeChatPayAdapter } from './adapters/WeChatPayAdapter';
 import { AlipayAdapter } from './adapters/AlipayAdapter';

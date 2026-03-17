@@ -28,22 +28,20 @@ export class AlipayAdapter implements IPaymentAdapter {
       const outTradeNo = metadata?.orderId || `ORDER_${Date.now()}`;
       
       // Page Pay (Desktop Web)
-      // returns a Form HTML string that needs to be submitted by frontend
-      const formData = new AlipayFormData();
-      formData.setMethod('get');
-      formData.addField('notifyUrl', this.notifyUrl);
-      formData.addField('bizContent', {
-        outTradeNo: outTradeNo,
-        productCode: 'FAST_INSTANT_TRADE_PAY',
-        totalAmount: amount.toFixed(2),
-        subject: `Order ${outTradeNo}`,
-        body: `Payment for Order ${outTradeNo}`,
-      });
-
-      const result = await this.alipay.exec(
+      // Returns a URL string for GET method
+      const result = await this.alipay.pageExec(
         'alipay.trade.page.pay',
-        {},
-        { formData: formData }
+        {
+          method: 'GET',
+          bizContent: {
+            outTradeNo: outTradeNo,
+            productCode: 'FAST_INSTANT_TRADE_PAY',
+            totalAmount: amount.toFixed(2),
+            subject: `Order ${outTradeNo}`,
+            body: `Payment for Order ${outTradeNo}`,
+          },
+          notifyUrl: this.notifyUrl,
+        }
       );
       
       // Result is the URL or Form HTML

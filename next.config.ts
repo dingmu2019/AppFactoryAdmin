@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  serverExternalPackages: ["pg", "pg-pool", "pg-protocol", "pg-types", "pg-boss", "sharp", "onnxruntime-node"],
+  serverExternalPackages: ["pg", "pg-pool", "pg-protocol", "pg-types", "pg-boss", "sharp", "onnxruntime-node", "alipay-sdk", "formidable"],
   // Reduce serverless function size by externalizing heavy packages if needed
   typescript: {
     // !! WARN !!
