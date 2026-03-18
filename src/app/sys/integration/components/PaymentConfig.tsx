@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Eye, EyeOff, Save, Key, Wallet, AlertCircle } from 'lucide-react';
+import { CreditCard, Eye, EyeOff, Save, Key, Wallet, AlertCircle, FlaskConical, X } from 'lucide-react';
 import type { PaymentConfig, IntegrationConfig } from '../../../../types/integration';
 import { useI18n } from '../../../../contexts';
 
@@ -27,6 +27,7 @@ export const PaymentConfigForm: React.FC<Props> = ({ configs, onSave, isSaving }
   const [isEnabled, setIsEnabled] = useState(false);
   const [currentId, setCurrentId] = useState<string | undefined>(undefined);
   const [showSecrets, setShowSecrets] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
 
   // Load config when configs change or activeProvider changes
   useEffect(() => {
@@ -215,6 +216,17 @@ export const PaymentConfigForm: React.FC<Props> = ({ configs, onSave, isSaving }
                 />
               </div>
             </div>
+            
+            <div className="pt-4">
+              <button
+                type="button"
+                onClick={() => setShowTestModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg transition-colors border border-zinc-200 dark:border-zinc-700 font-medium text-sm"
+              >
+                <FlaskConical size={16} className="text-indigo-500" />
+                支付测试 Demo (支付宝/微信)
+              </button>
+            </div>
           </>
         );
         
@@ -307,6 +319,48 @@ export const PaymentConfigForm: React.FC<Props> = ({ configs, onSave, isSaving }
           </button>
         </div>
       </div>
+
+      {/* Payment Test Modal */}
+      {showTestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                  <FlaskConical size={20} className="text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <h3 className="font-bold text-lg text-zinc-900 dark:text-white">支付模拟测试 (Sandbox)</h3>
+              </div>
+              <button 
+                onClick={() => setShowTestModal(false)}
+                className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full transition-colors text-zinc-500"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Modal Body - Iframe */}
+            <div className="flex-1 overflow-auto bg-zinc-50 dark:bg-zinc-950 p-0">
+              <iframe 
+                src="/sys/integration/payment-test" 
+                className="w-full h-[70vh] border-0"
+                title="Payment Test Demo"
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-end">
+              <button
+                onClick={() => setShowTestModal(false)}
+                className="px-6 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-medium transition-colors"
+              >
+                关闭测试
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
