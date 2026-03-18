@@ -675,7 +675,8 @@ export const en = {
       "sendCodeFailed": "Failed to send code",
       "loginFailed": "Login failed",
       "sessionError": "No session token received",
-      "unauthorized": "Unauthorized access"
+      "unauthorized": "Unauthorized access",
+      "sessionExpired": "Your account has been logged in from another device. Please sign in again."
     }
   },
   "products": {

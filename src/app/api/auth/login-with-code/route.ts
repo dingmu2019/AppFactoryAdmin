@@ -103,20 +103,27 @@ export const POST = withApiErrorHandling(async (req: NextRequest) => {
       }
     }
 
-    // --- 核心修复点：无论新建还是更新，都强制同步一次 public.users 记录 ---
+    // --- 核心修复点：无论新建还是更新，都强制同步一次 public.users 记录，并增加会话版本用于踢出 ---
     if (existingUser) {
-        console.log(`[Login] Synchronizing public.users record for: ${email}`);
-        const { error: syncError } = await admin.from('users').upsert({
-            id: existingUser.id,
-            email: email,
-            full_name: email.split('@')[0],
-            roles: ['user'], // 强制确保角色正确
-            status: 'active'
-        }, { onConflict: 'id' });
+        console.log(`[Login] Synchronizing public.users and incrementing session version for: ${email}`);
+        
+        // 1. 调用 RPC 增加版本号并同步到元数据
+        const { data: newVersion, error: rpcError } = await admin.rpc('increment_session_version', { 
+            target_user_id: existingUser.id 
+        });
 
-        if (syncError) {
-            console.error('[Login] Failed to sync to public.users:', syncError);
-            // 这里不中断主流程，因为 Auth 已经创建/更新成功，让用户先能登录
+        if (rpcError) {
+            console.error('[Login] Failed to increment session version via RPC:', rpcError);
+            // 降级逻辑：如果 RPC 失败，至少尝试 upsert 基础数据
+            await admin.from('users').upsert({
+                id: existingUser.id,
+                email: email,
+                full_name: email.split('@')[0],
+                roles: ['user'],
+                status: 'active'
+            }, { onConflict: 'id' });
+        } else {
+            console.log(`[Login] New session version for ${email}: ${newVersion}`);
         }
     }
     // -------------------------------------------------------------------

@@ -354,6 +354,19 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       password,
     });
 
+    if (!error && data.user) {
+      // 登录成功后，立即增加会话版本号并同步元数据，用于踢出其他设备上的旧会话
+      try {
+        await supabase.rpc('increment_session_version', { 
+          target_user_id: data.user.id 
+        });
+        // 强制刷新会话，以获取包含最新 session_version 的 JWT
+        await supabase.auth.refreshSession();
+      } catch (e) {
+        console.warn('[Auth] Failed to increment session version during login:', e);
+      }
+    }
+
     // Record Audit Log for Login
     try {
       // Use data.session.access_token if available

@@ -79,11 +79,40 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // 1. 提取用户角色 (从 user_metadata.role)
+  // 1. 提取用户角色和会话版本 (从 user_metadata)
   const role = user?.user_metadata?.role;
+  const tokenSessionVersion = parseInt(user?.user_metadata?.session_version || '0');
 
-  // 2. 如果用户已登录，检查角色权限
+  // 2. 如果用户已登录，进行核心校验：角色权限 + 单会话踢出校验
   if (user) {
+    // --- 强制踢出校验 (Single Session Control) ---
+    // 查询数据库中该用户的最新 session_version
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('session_version')
+      .eq('id', user.id)
+      .single();
+
+    if (!userError && userData) {
+      const dbSessionVersion = userData.session_version || 0;
+      // 如果数据库中的版本号大于当前 Token 中的版本号，说明该账号已在别处重新登录
+      if (dbSessionVersion > tokenSessionVersion) {
+        console.log(`[Middleware] Session kicked for ${user.email}: DB version ${dbSessionVersion} > Token version ${tokenSessionVersion}`);
+        // 清理会话并重定向到登录页，提示“已在别处登录”
+        const url = req.nextUrl.clone();
+        url.pathname = '/auth/login';
+        url.searchParams.set('error', 'session_expired');
+        const response = NextResponse.redirect(url);
+        
+        // 尝试清除 Cookie
+        const domainSuffix = cookieDomain ? `; Domain=${cookieDomain}` : '';
+        response.cookies.delete('sb-access-token');
+        response.cookies.delete('sb-refresh-token');
+        
+        return response;
+      }
+    }
+
     const allowedRoles = ['admin', 'editor', 'viewer'];
     // 如果角色是 'user' 且不在允许的角色列表中，则拦截
     const isRestricted = role === 'user' || !allowedRoles.includes(role);

@@ -675,7 +675,8 @@ export const zh = {
       "sendCodeFailed": "发送验证码失败",
       "loginFailed": "登录失败",
       "sessionError": "会话获取失败",
-      "unauthorized": "无权访问本系统"
+      "unauthorized": "无权访问本系统",
+      "sessionExpired": "账号已在别处登录，请重新登录"
     }
   },
   "products": {
