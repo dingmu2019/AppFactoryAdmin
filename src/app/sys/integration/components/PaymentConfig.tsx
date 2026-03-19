@@ -191,7 +191,7 @@ export const PaymentConfigForm: React.FC<Props> = ({ configs, onSave, isSaving }
                 value={formData.appId || ''}
                 onChange={(e) => handleChange('appId', e.target.value)}
                 placeholder={t('integration.payment.placeholder.appId')}
-                className="w-full px-4 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                className="w-full px-4 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -201,18 +201,39 @@ export const PaymentConfigForm: React.FC<Props> = ({ configs, onSave, isSaving }
                 value={formData.merchantId || ''}
                 onChange={(e) => handleChange('merchantId', e.target.value)}
                 placeholder={t('integration.payment.placeholder.merchantId')}
-                className="w-full px-4 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                className="w-full px-4 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-sm"
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300">{t('integration.payment.secretKey')}</label>
+              <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                {formData.provider === 'wechat_pay' ? '微信支付平台证书 (Public Key)' : '支付宝公钥 (Alipay Public Key)'}
+              </label>
+              <div className="relative">
+                <textarea
+                  value={formData.publicKey || ''}
+                  onChange={(e) => handleChange('publicKey', e.target.value)}
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-xs"
+                  placeholder={formData.provider === 'wechat_pay' ? '-----BEGIN CERTIFICATE-----' : 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...'}
+                />
+              </div>
+              <p className="text-xs text-zinc-500">
+                {formData.provider === 'wechat_pay' 
+                  ? '微信支付 V3 接口需要平台证书 PEM 内容用于验签。' 
+                  : '支付宝 RSA2 签名模式需要配置支付宝公钥（非应用公钥）。'}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                {formData.provider === 'wechat_pay' ? '商户 API 私钥 (Merchant Private Key)' : '应用私钥 (App Private Key)'}
+              </label>
               <div className="relative">
                 <textarea
                   value={formData.secretKey || ''}
                   onChange={(e) => handleChange('secretKey', e.target.value)}
                   rows={4}
                   className="w-full px-4 py-3 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-xs"
-                  placeholder={t('integration.payment.placeholder.secretKey')}
+                  placeholder="-----BEGIN PRIVATE KEY-----"
                 />
               </div>
             </div>

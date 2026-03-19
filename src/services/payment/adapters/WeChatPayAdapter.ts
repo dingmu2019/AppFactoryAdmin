@@ -12,23 +12,51 @@ export class WeChatPayAdapter implements IPaymentAdapter {
   private notifyUrl: string = '';
 
   initialize(config: any) {
-    if (!config.mchId || !config.appId || !config.secretKey) {
-      throw new Error('WeChat Pay Config Missing: mchId, appId, or secretKey');
+    const mchid = config.mchId || config.merchantId;
+    const appId = config.appId;
+    const privateKey = config.secretKey;
+    const publicKey = config.publicKey;
+
+    if (!mchid || !appId || !privateKey || !publicKey) {
+      const missing = [];
+      if (!mchid) missing.push('mchId (Merchant ID)');
+      if (!appId) missing.push('appId');
+      if (!privateKey) missing.push('secretKey (Private Key)');
+      if (!publicKey) missing.push('publicKey (Platform Certificate)');
+      throw new Error(`WeChat Pay Config Missing: ${missing.join(', ')}`);
     }
     
-    // In production, privateKey might be stored as file path or raw string
-    // Here we assume it's a string (pem content)
-    // Also need public cert (platform certificate) or download it automatically
-    
-    this.mchid = config.mchId;
-    this.appid = config.appId;
+    this.mchid = mchid;
+    this.appid = appId;
     this.notifyUrl = config.notifyUrl || `https://api.yourdomain.com/api/v1/payments/webhook/wechat_pay`;
+
+    // 格式化公钥/证书：确保包含 PEM 头尾并处理换行
+    const formatPem = (content: string, defaultType: 'CERTIFICATE' | 'PRIVATE KEY') => {
+      let trimmed = content.trim();
+      if (trimmed.startsWith('-----BEGIN')) return trimmed;
+      
+      // 移除可能存在的换行和空格
+      const cleanContent = trimmed.replace(/\s+/g, '');
+      
+      // 自动识别类型：微信支付公钥通常以 MIIBIj 开头 (RSA Public Key)
+      let type = defaultType;
+      if (defaultType === 'CERTIFICATE' && cleanContent.startsWith('MIIBIj')) {
+        type = 'PUBLIC KEY' as any;
+      }
+
+      // 每 64 字符换行 (标准 PEM 格式)
+      const lines = cleanContent.match(/.{1,64}/g) || [];
+      return `-----BEGIN ${type}-----\n${lines.join('\n')}\n-----END ${type}-----`;
+    };
+
+    const formattedPublicKey = formatPem(publicKey, 'CERTIFICATE');
+    const formattedPrivateKey = formatPem(privateKey, 'PRIVATE KEY');
 
     this.pay = new WxPay({
       appid: this.appid,
       mchid: this.mchid,
-      publicKey: config.publicKey, // Platform Certificate PEM
-      privateKey: config.secretKey, // Merchant Private Key PEM
+      publicKey: formattedPublicKey, // 微信支付平台证书
+      privateKey: formattedPrivateKey, // 商户私钥
     });
   }
 

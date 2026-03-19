@@ -34,12 +34,7 @@ export class LakalaAdapter implements IPaymentAdapter {
             valid_time: "30m" 
         };
 
-        // 2. 生成 AES Key 和 IV (此处假设 IV 使用全0或特定规则，或者拉卡拉不需要传输IV，仅需Key)
-        // 根据常见实践，如果协议中没有传递 IV 的字段，可能是 ECB 模式或者固定 IV。
-        // 但根据搜索结果，V3 是 AES-256-CBC。
-        // 如果拉卡拉没有在请求头或报文中预留 IV 字段，则通常是将 IV 拼接到密文前，或者 IV 就是全 0。
-        // 这里为了兼容性，我们生成随机 AES Key，使用全 0 IV 进行加密 (这也是某些银行接口的做法)。
-        // 实际上需要查阅具体文档。这里假设 IV 为全 0。
+        // 2. 生成 AES Key 和 IV
         const aesKey = LakalaUtils.generateAesKey();
         const iv = Buffer.alloc(16, 0); 
 
@@ -47,7 +42,15 @@ export class LakalaAdapter implements IPaymentAdapter {
         const reqDataEncrypted = LakalaUtils.aesEncrypt(bizData, aesKey, iv);
 
         // 4. 加密 AES Key (用拉卡拉公钥)
-        const encKey = LakalaUtils.rsaEncrypt(aesKey, this.config.lakalaPublicKey);
+        // 支持 config.publicKey 或 config.lakalaPublicKey
+        const publicKey = this.config.publicKey || this.config.lakalaPublicKey;
+        const privateKey = this.config.secretKey || this.config.merchantPrivateKey;
+
+        if (!publicKey || !privateKey) {
+            throw new Error('Lakala Config Missing: publicKey or secretKey');
+        }
+
+        const encKey = LakalaUtils.rsaEncrypt(aesKey, publicKey);
 
         // 5. 构造请求体
         const timestamp = Math.floor(Date.now() / 1000).toString();
@@ -65,7 +68,7 @@ export class LakalaAdapter implements IPaymentAdapter {
         };
 
         // 6. 签名 (对 requestBody 中除 signature 外的字段签名)
-        const signature = LakalaUtils.sign(requestBody, this.config.merchantPrivateKey);
+        const signature = LakalaUtils.sign(requestBody, privateKey);
         (requestBody as any).signature = signature;
 
         // 7. 发送请求
@@ -118,12 +121,14 @@ export class LakalaAdapter implements IPaymentAdapter {
         // 拉卡拉回调通常是 POST JSON
         try {
             const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
-            // 验签逻辑：对 payload 中除 signature 外的字段验签
-            // 注意：拉卡拉回调可能也是加密的，需要先解密再验签，或者对密文验签
-            // 通常是对密文验签。即 data 本身包含 req_data, enc_key, signature 等。
+            const publicKey = this.config.publicKey || this.config.lakalaPublicKey;
             
-            // 简单验证：调用 Utils.verify
-            return LakalaUtils.verify(data, signature, this.config.lakalaPublicKey);
+            if (!publicKey) {
+                console.error('Lakala Config Missing: publicKey');
+                return false;
+            }
+            
+            return LakalaUtils.verify(data, signature, publicKey);
         } catch (e) {
             console.error('Webhook verification failed', e);
             return false;
@@ -132,12 +137,17 @@ export class LakalaAdapter implements IPaymentAdapter {
 
     async processWebhookEvent(payload: string | Buffer, signature: string): Promise<WebhookResult> {
         const data = typeof payload === 'string' ? JSON.parse(payload) : payload;
+        const privateKey = this.config.secretKey || this.config.merchantPrivateKey;
+
+        if (!privateKey) {
+            throw new Error('Lakala Config Missing: secretKey');
+        }
         
         // 解密逻辑 (如果回调是加密的)
         let eventData = data;
         if (data.req_data && data.enc_key) {
              const iv = Buffer.alloc(16, 0);
-             const aesKey = LakalaUtils.rsaDecrypt(data.enc_key, this.config.merchantPrivateKey);
+             const aesKey = LakalaUtils.rsaDecrypt(data.enc_key, privateKey);
              eventData = LakalaUtils.aesDecrypt(data.req_data, aesKey, iv);
         }
 
